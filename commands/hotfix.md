@@ -1,12 +1,20 @@
 ---
-description:
-  Investigate and fix a live bug, following this repo's triage fork,
+description: Investigate and fix a live bug, following this repo's triage fork,
   tagged-logging discipline, and commit hygiene for hotfixes.
 ---
 
 Treat $ARGUMENTS as the bug report — the symptom, plus an issue id if one
 exists (use it for the `HOTFIX-<issue-id>` tag below; otherwise mint a short
 slug).
+
+## Status narration: apply i-have-adhd
+
+Apply i-have-adhd's output rules (action-first, numbered steps, no
+preamble/recap/tangents, cap lists at 5) to status updates during
+investigation — especially step 3's bisection narration. Never apply them to
+the triage decision in step 1 when it's genuinely unclear which fork applies,
+or to the tagged log lines themselves — those stay complete regardless of
+active mode.
 
 ## 1. Triage fork — decide this before writing any code
 

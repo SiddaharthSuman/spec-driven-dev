@@ -1,6 +1,5 @@
 ---
-description:
-  Implement a Feature Spec end to end, under this project's workflow rules.
+description: Implement a Feature Spec end to end, under this project's workflow rules.
 ---
 
 Read `docs/context/06-progress-tracker.md` first and confirm the spec at
@@ -26,6 +25,13 @@ UI guidance, Context7 for library docs. None of them replace
 `docs/context/06-progress-tracker.md` as the single source of truth for spec
 status, though — don't let a plugin's own internal state stand in for updating
 it.
+
+Apply i-have-adhd's output rules (action-first, numbered steps, no
+preamble/recap/tangents, cap lists at 5) to progress narration during
+implementation. Never apply them to anything written to the tracker, the
+spec file, or a living doc (`docs/audit-notes/feature-*.md`,
+`02-architecture.md`, `05-ui-context.md`) — those stay complete regardless of
+active mode.
 
 Whenever the Dependencies section names a new or updated library, or you're
 about to write a call whose exact signature you're inferring rather than

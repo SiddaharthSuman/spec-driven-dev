@@ -11,6 +11,16 @@ a rough idea to run through `/spec-new` first if no path is given — either
 way this drives the same four stages the manual pipeline uses, just through
 one entry point with worker parallelism added at the implement stage.
 
+## Status narration: apply i-have-adhd
+
+Apply i-have-adhd's output rules (action-first, numbered steps, no
+preamble/recap/tangents, cap lists at 5) to status updates and progress
+narration produced by this command — the pre-dispatch sanity check, per-wave
+reporting, and step 5's budget tracking. Never apply them to escalation
+writeups (step 3), contract-correction logs (step 3), or anything written to
+a spec file, tracker entry, or verification-log entry (step 6) — those stay
+complete regardless of active mode.
+
 ## 0. Don't force decomposition
 
 This wraps the exact same loop `/spec-new` → `/spec-implement` →
