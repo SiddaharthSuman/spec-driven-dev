@@ -120,6 +120,13 @@ one tangled one.
 
 Enabling `spec-driven-dev` enables all four automatically.
 
+**Maintainers:** `ponytail` and `i-have-adhd` live in other marketplaces, so
+both must be listed in `allowCrossMarketplaceDependenciesOn` in this repo's
+`marketplace.json`. If a dependency is declared in `plugin.json` and the
+allowlist entry is missing, the install completes _without_ it and the
+plugin then fails to load. Declaring dependencies in the marketplace entry
+instead gives a loud refusal message, which is easier to diagnose.
+
 ---
 
 ## Optional acceleration: the System One decision helper
@@ -145,16 +152,36 @@ setup checklist, because nothing here requires it.
 
 ---
 
+## Developing this plugin
+
+- Run `claude --plugin-dir <path-to-this-repo>` to load your working copy for
+  one session without installing it. Alternatively, add your checkout as a
+  local marketplace (`/plugin marketplace add ./spec-driven-dev`); edits then
+  take effect at the next session start or `/reload-plugins`.
+- A `--plugin-dir` copy silently shadows an installed plugin of the same name.
+  If behaviour looks stale, check which copy is actually loaded.
+- If `pr-review/` needs npm packages, keep a `package-lock.json` at the plugin
+  root. Claude Code runs `npm ci --ignore-scripts` on install; Yarn and pnpm
+  lockfiles are skipped. Because scripts are ignored, Playwright's browser
+  download never happens automatically, which is why the one-time setup below
+  lists `npx playwright install chromium`.
+
+---
+
 ## Do / don't
 
 - **Do** trust the project folder before anything else — that's what
   triggers marketplace registration and plugin install from
   `.claude/settings.json`.
-- **Do** turn on auto-update for `yourorg-spec-driven-dev` once, via
-  `/plugin` — we don't pin versions, so this is what makes a push actually
-  reach you.
+- **Do** keep `autoUpdate` set on the `siddaharthsuman-spec-driven-dev` entry
+  in the project's `.claude/settings.json` — we don't pin versions, so this is
+  what makes a push actually reach you. Without it, custom marketplaces
+  default to auto-update off.
 - **Do** run one real, small feature through the full pipeline before
   treating a new project's setup as done.
+- **Don't** add a `version` field to `plugin.json` or the marketplace entry.
+  With none set, every commit is a new version, so a push reaches everyone.
+  With one set, pushes without a version bump never reach anyone.
 - **Don't** recreate `.claude/commands/`, `.claude/agents/`, or
   `.claude/skills/` inside a project repo — this package provides them;
   a local copy just drifts out of sync and causes duplicate/conflicting
@@ -179,13 +206,18 @@ setup checklist, because nothing here requires it.
 - **Don't** add a new call site for `decide.mjs` without writing its
   "decide it yourself" fallback in the same change. An accelerator with no
   fallback is a hard requirement wearing a disguise.
+- **Don't** expect this plugin in a cloud session (claude.ai/code). Cloud
+  sessions never show the trust dialog that `extraKnownMarketplaces` needs.
 
 ---
 
 ## One-time setup, per developer machine
 
-- [ ] Trust the project folder in Claude Code.
-- [ ] Turn on auto-update for `yourorg-spec-driven-dev` via `/plugin`.
+- [ ] Trust the project folder in Claude Code, then run `/reload-plugins` once
+      when it prints `Plugins changed. Run /reload-plugins to activate.`
+- [ ] Only if `autoUpdate` isn't set in the project's `.claude/settings.json`:
+      `/plugin` → **Marketplaces** → select `siddaharthsuman-spec-driven-dev`
+      → **Enable auto-update**.
 - [ ] _(Optional)_ Context7 API key — get one at
       [context7.com/dashboard](https://context7.com/dashboard), export
       `CONTEXT7_API_KEY` in your shell profile, restart Claude Code. Skippable;
@@ -206,8 +238,12 @@ folder:
 ```json
 {
   "extraKnownMarketplaces": {
-    "yourorg-spec-driven-dev": {
-      "source": { "source": "github", "repo": "yourorg/spec-driven-dev" }
+    "siddaharthsuman-spec-driven-dev": {
+      "source": {
+        "source": "github",
+        "repo": "SiddaharthSuman/spec-driven-dev"
+      },
+      "autoUpdate": true
     },
     "ponytail": {
       "source": { "source": "github", "repo": "DietrichGebert/ponytail" }
@@ -217,10 +253,39 @@ folder:
     }
   },
   "enabledPlugins": {
-    "spec-driven-dev@yourorg-spec-driven-dev": true
+    "spec-driven-dev@siddaharthsuman-spec-driven-dev": true
   }
 }
 ```
+
+**What happens on first open:** Claude Code asks you to trust the folder.
+After you accept, it clones the marketplaces in the background and prints
+`Plugins changed. Run /reload-plugins to activate.` Run `/reload-plugins`
+(or restart) once. This works without a manual install because this repo's
+marketplace entry uses a relative-path source (`source: "./"`); a plugin
+from an external source enabled only in project settings is not fetched
+automatically.
+
+**Manual install (fallback, or for user scope):**
+
+```text
+/plugin marketplace add SiddaharthSuman/spec-driven-dev
+/plugin install spec-driven-dev@siddaharthsuman-spec-driven-dev
+```
+
+On Claude Code v2.1.275+ one command does both:
+`/plugin install spec-driven-dev --marketplace SiddaharthSuman/spec-driven-dev`.
+Choose project scope for a repo the team shares, user scope for personal
+use. If this repo is private, git credentials must work without a prompt
+(`gh auth login`, or an SSH key already in `known_hosts`).
+
+#### Verify the install
+
+- [ ] Type `/` and confirm the commands appear under `spec-driven-dev`.
+- [ ] `claude plugin list` shows the plugin and all four dependencies as
+      enabled. The version is a 12-character commit SHA, because there is no
+      `version` field on purpose.
+- [ ] `/plugin` → **Errors** tab is empty.
 
 ### 2. Create the governing docs
 
@@ -271,8 +336,9 @@ case."
    - Commands/agents/skills/hooks live in the external spec-driven-dev
      plugin, not this repo — don't recreate .claude/commands/ locally.
    - Spec numbering is scoped per-developer folder, not one global sequence.
-   - The plugin marketplace auto-updates — a stale-looking cached plugin
-     isn't a bug to hand-fix locally.
+   - The plugin marketplace auto-updates (autoUpdate is set in
+     .claude/settings.json) — a stale-looking cached plugin isn't a bug to
+     hand-fix locally.
    Add nothing else here. Everything else gets discovered and added via
    /learn as the project actually runs.
 
@@ -409,3 +475,15 @@ themselves here is expected, not a failure:
       to end instead of the commands by hand — the first real exercise of
       the orchestrator/worker/verifier pipeline, including at least one
       multi-subspec wave if the work genuinely parallelizes.
+
+---
+
+## Troubleshooting
+
+| Symptom                                                     | Likely cause                                                          | Fix                                                                                                                                                                                                      |
+| ----------------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| No commands after first trust                               | Marketplace clones in the background                                  | `/reload-plugins` or restart; check `/plugin` → **Errors**                                                                                                                                               |
+| `Plugin "…" not cached at …`                                | Enabled but not fetched yet                                           | `/plugin` to refresh, or use the manual install                                                                                                                                                          |
+| `… is enabled in project settings but isn't installed here` | External-source plugin enabled only in project settings isn't fetched | `claude plugin install <name>@<marketplace> --scope project`                                                                                                                                             |
+| Plugin loads but dependencies are missing                   | Allowlist entry missing (see Dependencies)                            | Fix `marketplace.json`, then `/reload-plugins`                                                                                                                                                           |
+| Pushed a change, nothing updates                            | Auto-update off, or a `version` field is set                          | Enable `autoUpdate`; remove `version`; or run `claude plugin marketplace update siddaharthsuman-spec-driven-dev` then `claude plugin update spec-driven-dev@siddaharthsuman-spec-driven-dev` |
