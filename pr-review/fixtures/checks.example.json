@@ -1,0 +1,10 @@
+{
+  "head": "/tmp/pr-review-fixture/head",
+  "base": "/tmp/pr-review-fixture/base",
+  "filesChecked": 2,
+  "typecheck": { "errors": 0, "sample": [] },
+  "lint": { "errors": 0, "warnings": 1, "sample": [
+    { "file": "src/features/invoices/FilterPanel.tsx", "line": 88, "ruleId": "jsx-a11y/control-has-associated-label", "message": "Clear button has no accessible label", "severity": "warning" }
+  ] },
+  "tests": { "passed": 42, "failed": 0, "sample": [] }
+}

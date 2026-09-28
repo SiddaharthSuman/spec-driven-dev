@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PR #812 review — siddaharthsuman/example-app</title>
+<style>/* Report stylesheet. Self-contained — no external fonts or network
+   resources, since quality-gate.mjs loads this headless and checks it in
+   both light and dark theme. Keep every color pair here WCAG-contrast
+   checked by quality-gate before changing one. */
+
+:root {
+  --bg: #ffffff;
+  --panel: #f6f7f9;
+  --border: #d8dbe0;
+  --text: #1a1d21;
+  --text-muted: #52585f;
+  --link: #0b5fff;
+  --blocking: #b3261e;
+  --blocking-bg: #fdecea;
+  --high: #a15c00;
+  --high-bg: #fff2e0;
+  --medium: #6b5c00;
+  --medium-bg: #fff9db;
+  --pass: #146c2e;
+  --pass-bg: #e7f6ec;
+  --neutral-bg: #edeef1;
+}
+
+:root[data-theme='dark'] {
+  --bg: #14161a;
+  --panel: #1d2025;
+  --border: #33373d;
+  --text: #eceef1;
+  --text-muted: #a8adb5;
+  --link: #7aa6ff;
+  --blocking: #ff8a80;
+  --blocking-bg: #3a1d1b;
+  --high: #ffb74d;
+  --high-bg: #3a2b12;
+  --medium: #f0e070;
+  --medium-bg: #35300e;
+  --pass: #7fd99a;
+  --pass-bg: #16301f;
+  --neutral-bg: #26292f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--bg);
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  padding: 24px;
+  max-width: 960px;
+  margin-inline: auto;
+}
+
+h1 {
+  font-size: 1.375rem;
+  margin: 0 0 4px;
+}
+
+h2 {
+  font-size: 1.05rem;
+  margin: 28px 0 10px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: baseline;
+  margin-bottom: 16px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge-approve {
+  background: var(--pass-bg);
+  color: var(--pass);
+}
+
+.badge-request-changes {
+  background: var(--blocking-bg);
+  color: var(--blocking);
+}
+
+.badge-comment {
+  background: var(--neutral-bg);
+  color: var(--text-muted);
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.lede {
+  font-size: 1rem;
+  margin: 0 0 20px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+th, td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.check-yes::before {
+  content: '✓ ';
+  color: var(--pass);
+}
+
+.check-no::before {
+  content: '✗ ';
+  color: var(--blocking);
+}
+
+.finding {
+  border-left: 3px solid var(--border);
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  border-radius: 0 6px 6px 0;
+  background: var(--panel);
+}
+
+.finding[data-severity='blocking'] {
+  border-left-color: var(--blocking);
+  background: var(--blocking-bg);
+}
+
+.finding[data-severity='high'] {
+  border-left-color: var(--high);
+  background: var(--high-bg);
+}
+
+.finding[data-severity='medium'] {
+  border-left-color: var(--medium);
+  background: var(--medium-bg);
+}
+
+.finding-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-right: 6px;
+}
+
+.diff-block {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82rem;
+  white-space: pre;
+  max-width: 100%;
+}
+
+.visual-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+@media (max-width: 620px) {
+  .visual-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.visual-grid img {
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  display: block;
+}
+
+.copy-btn {
+  font: inherit;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.copy-btn:hover {
+  background: var(--neutral-bg);
+}
+
+ul.plain {
+  margin: 0;
+  padding-left: 20px;
+}
+
+footer {
+  margin-top: 32px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* Never let a long path/URL/diff line force horizontal page scroll at
+   either viewport width quality-gate checks. */
+body, .panel, .finding {
+  overflow-wrap: anywhere;
+}
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1 lang="en">PR #812 — siddaharthsuman/example-app</h1>
+    <span class="badge badge-request-changes">Request changes</span>
+    <span class="muted">confidence 4/5 · risk 2/3 · tier S</span>
+    <button id="theme-toggle" class="copy-btn" type="button">Toggle theme</button>
+  </div>
+
+  <p class="lede">Adds invoice filtering but the new date-range validator allows an end date before the start date.</p>
+
+  <h2>Verification</h2>
+  <table><tr><td class="check-no">No blocking finding</td></tr>
+<tr><td class="check-yes">Typecheck / lint / tests pass</td></tr>
+<tr><td class="check-yes">Small, single-purpose diff</td></tr>
+<tr><td class="check-yes">Reuses existing patterns</td></tr>
+<tr><td class="check-yes">No open user-visible inconsistency</td></tr></table>
+
+  <h2>Lenses</h2>
+  <table>
+      <tr>
+        <td>Correctness</td>
+        <td class="check-no">Fail</td>
+        <td>The date-range validator does not check that end &gt;= start.</td>
+      </tr>
+
+      <tr>
+        <td>Security</td>
+        <td class="check-yes">Pass</td>
+        <td>No new auth or data-access surface introduced.</td>
+      </tr>
+
+      <tr>
+        <td>Simplicity</td>
+        <td class="check-yes">Pass</td>
+        <td>Single-purpose diff, no unrelated refactors.</td>
+      </tr>
+
+      <tr>
+        <td>Accessibility</td>
+        <td class="check-no">Note</td>
+        <td>New filter inputs have labels but no aria-describedby for the validation error.</td>
+      </tr>
+
+      <tr>
+        <td>Consistency</td>
+        <td class="check-yes">Pass</td>
+        <td>Follows the existing filter-panel pattern from the runbook feature.</td>
+      </tr></table>
+
+  <h2>Findings (2, 1 blocking)</h2>
+  
+      <div class="finding" data-severity="blocking">
+        <span class="finding-id">B1</span>
+        <strong>Blocking</strong>
+        — Date-range filter accepts an end date before the start date.
+        <div class="muted">validateDateRange only checks both fields are present, never their order.</div>
+        <div class="muted finding-id">src/features/invoices/filters.ts:42</div>
+      </div>
+
+      <div class="finding" data-severity="low">
+        <span class="finding-id">N1</span>
+        <strong>Low</strong>
+        — Filter panel's clear button has no accessible label.
+        
+        <div class="muted finding-id">src/features/invoices/FilterPanel.tsx:88</div>
+      </div>
+
+  <h2>Key diffs</h2>
+      <h3 class="muted">src/features/invoices/filters.ts</h3>
+      <div class="diff-block">--- a/src/features/invoices/filters.ts
++++ b/src/features/invoices/filters.ts
+@@ -40,6 +40,7 @@
+-  return true;
++  return start &lt;= end;
+</div>
+
+      <h3 class="muted">src/features/invoices/FilterPanel.tsx</h3>
+      <div class="diff-block">--- a/src/features/invoices/FilterPanel.tsx
++++ b/src/features/invoices/FilterPanel.tsx
+@@ -40,6 +40,7 @@
+-  return true;
++  return start &lt;= end;
+</div>
+
+  <h2>Visual coverage — 50% changed/new</h2>
+  
+        <div class="panel">
+          <strong>invoice-list-filter-panel-open</strong>
+          — Changed
+          
+          <div class="visual-grid">
+            <figure><img src="invoice-list-filter-panel-open.base.png" alt="Base: invoice-list-filter-panel-open" loading="lazy"><figcaption class="muted">Base</figcaption></figure>
+            <figure><img src="invoice-list-filter-panel-open.head.png" alt="Head: invoice-list-filter-panel-open" loading="lazy"><figcaption class="muted">Head</figcaption></figure>
+          </div>
+        </div>
+
+        <div class="panel">
+          <strong>sweep-invoices</strong>
+          — Unchanged
+          
+          <div class="visual-grid">
+            <figure><img src="sweep-invoices.base.png" alt="Base: sweep-invoices" loading="lazy"><figcaption class="muted">Base</figcaption></figure>
+            <figure><img src="sweep-invoices.head.png" alt="Head: sweep-invoices" loading="lazy"><figcaption class="muted">Head</figcaption></figure>
+          </div>
+        </div>
+  <h3 class="muted">Try it yourself</h3><ul class="plain"><li>git fetch origin pull/812/head:pr-812 &amp;&amp; git checkout pr-812</li><li>pnpm dev</li><li>open http://localhost:5173/invoices</li></ul>
+  <h3 class="muted">Known limits</h3><ul class="plain"><li>API responses are mocked from src/services/*.api.ts shapes, not live data.</li><li>useUser() is stubbed — a PR touching src/hooks/useUser.ts cannot be verified visually.</li></ul>
+
+  <h2>Spec</h2>
+  <p>Linked: <code>docs/specs/012-invoice-filtering.md</code></p>
+
+  <h2>Not independently verified</h2><ul class="plain"><li>Whether the backend actually rejects an invalid date range server-side was not checked — this PR only covers the client-side filter UI.</li></ul>
+
+  <h2>Paste-ready comment</h2>
+  <button id="copy-md-btn" class="copy-btn" type="button">Copy markdown comment</button>
+  <pre id="markdown-source" style="position:absolute;left:-9999px;top:-9999px;" aria-hidden="true">## PR #812 review — Request changes (confidence 4/5, risk 2/3)
+
+Adds invoice filtering but the new date-range validator allows an end date before the start date.
+
+### Verification
+- [ ] No blocking finding
+- [x] Typecheck / lint / tests pass
+- [x] Small, single-purpose diff
+- [x] Reuses existing patterns
+- [x] No open user-visible inconsistency
+
+### Lenses
+- **correctness**: Fail — The date-range validator does not check that end &gt;= start.
+- **security**: Pass — No new auth or data-access surface introduced.
+- **simplicity**: Pass — Single-purpose diff, no unrelated refactors.
+- **accessibility**: Note — New filter inputs have labels but no aria-describedby for the validation error.
+- **consistency**: Pass — Follows the existing filter-panel pattern from the runbook feature.
+
+### Findings (2, 1 blocking)
+- **B1** (Blocking): Date-range filter accepts an end date before the start date.
+  validateDateRange only checks both fields are present, never their order.
+  `src/features/invoices/filters.ts:42`
+- **N1** (Low): Filter panel's clear button has no accessible label.
+  `src/features/invoices/FilterPanel.tsx:88`
+
+### Visual coverage — 50% changed/new
+- **invoice-list-filter-panel-open**: Changed
+- **sweep-invoices**: Unchanged
+
+### Spec
+Linked: `docs/specs/012-invoice-filtering.md`
+
+### Not independently verified
+- Whether the backend actually rejects an invalid date range server-side was not checked — this PR only covers the client-side filter UI.
+
+---
+_base `11111111` · head `22222222` · not posted automatically — paste this yourself._</pre>
+
+  <footer>
+    Generated 2026-09-28 05:54:58 UTC · base <code>11111111</code> ·
+    head <code>22222222</code> ·
+    186 reviewable lines across 3 files
+  </footer>
+
+  <script>// Inlined into report.html by render/html.mjs. Two jobs: the
+// copy-to-clipboard button (quality-gate.mjs checks this actually works),
+// and a light/dark theme toggle for reading the report locally.
+
+document.addEventListener('DOMContentLoaded', () => {
+  const copyBtn = document.getElementById('copy-md-btn');
+  if (copyBtn) {
+    copyBtn.addEventListener('click', async () => {
+      const source = document.getElementById('markdown-source');
+      const text = source ? source.textContent : '';
+      const original = copyBtn.textContent;
+      try {
+        await navigator.clipboard.writeText(text);
+        copyBtn.dataset.copied = 'true';
+        copyBtn.textContent = 'Copied';
+      } catch {
+        copyBtn.dataset.copied = 'false';
+        copyBtn.textContent = 'Copy failed — select the text below manually';
+      }
+      setTimeout(() => {
+        copyBtn.textContent = original;
+        delete copyBtn.dataset.copied;
+      }, 1500);
+    });
+  }
+
+  const themeToggle = document.getElementById('theme-toggle');
+  if (themeToggle) {
+    themeToggle.addEventListener('click', () => {
+      const root = document.documentElement;
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const current = root.getAttribute('data-theme') || (prefersDark ? 'dark' : 'light');
+      root.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
+    });
+  }
+});
+</script>
+</body>
+</html>

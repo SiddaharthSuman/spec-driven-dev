@@ -5,7 +5,7 @@ agents, skills, and hooks. Kept out of every application repo on purpose —
 this process is versioned independently from the code it governs.
 
 **This repo never contains project-specific instructions.** It provides the
-*mechanism* (commands, agents, skills, hooks, the PR review pipeline). Every
+_mechanism_ (commands, agents, skills, hooks, the PR review pipeline). Every
 project's own rules, history, and specs live in that project's own repo. See
 the diagram below if that split isn't obvious yet.
 
@@ -98,25 +98,25 @@ one tangled one.
 
 ## What lives here vs. what lives in each project repo
 
-| This package (`spec-driven-dev`) | Each consuming project's own repo |
-| --- | --- |
-| `commands/` — `spec-new.md`, `spec-implement.md`, `spec-archive.md`, `hotfix.md`, `learn.md`, `pr-review.md`, `engineer.md` | `CLAUDE.md`, `AGENTS.md` |
-| `agents/` — `explorer.md`, `spec-verifier.md`, `pr-reviewer.md` | `docs/context/01`–`06` |
-| `skills/` — `subagent-dispatch/`, `mock-first-api/` | `docs/specs/` (per-developer folders), `docs/specs/_template.md`, `_amendment-template.md` |
-| `hooks/` — Context7 key check, any agent-side enforcement `learn.md` proposes | `docs/specs/archive/`, `docs/verification-log/` |
-| `pr-review/` — `cli.mjs` + ~15 modules, fixtures, golden files, tests | `.husky/` (pre-commit/pre-push — human-edit-side enforcement; can't live in a plugin) |
-| `system-one/decide.mjs` — optional Laya/Jev decision helper, never required | |
+| This package (`spec-driven-dev`)                                                                                            | Each consuming project's own repo                                                          |
+| --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `commands/` — `spec-new.md`, `spec-implement.md`, `spec-archive.md`, `hotfix.md`, `learn.md`, `pr-review.md`, `engineer.md` | `CLAUDE.md`, `AGENTS.md`                                                                   |
+| `agents/` — `explorer.md`, `spec-verifier.md`, `pr-reviewer.md`                                                             | `docs/context/01`–`06`                                                                     |
+| `skills/` — `subagent-dispatch/`, `mock-first-api/`                                                                         | `docs/specs/` (per-developer folders), `docs/specs/_template.md`, `_amendment-template.md` |
+| `hooks/` — Context7 key check, any agent-side enforcement `learn.md` proposes                                               | `docs/specs/archive/`, `docs/verification-log/`                                            |
+| `pr-review/` — `cli.mjs` + ~15 modules, fixtures, golden files, tests                                                       | `.husky/` (pre-commit/pre-push — human-edit-side enforcement; can't live in a plugin)      |
+| `system-one/decide.mjs` — optional Laya/Jev decision helper, never required                                                 |                                                                                            |
 
 ---
 
 ## Dependencies (auto-installed with this plugin)
 
-| Plugin | Marketplace | Source |
-| --- | --- | --- |
-| `superpowers` | `claude-plugins-official` | built in, no setup needed |
-| `context7` | `claude-plugins-official` | built in, no setup needed |
-| `ponytail` | `ponytail` | `github:DietrichGebert/ponytail` |
-| `i-have-adhd` | `i-have-adhd` | `github:ayghri/i-have-adhd` |
+| Plugin        | Marketplace               | Source                           |
+| ------------- | ------------------------- | -------------------------------- |
+| `superpowers` | `claude-plugins-official` | built in, no setup needed        |
+| `context7`    | `claude-plugins-official` | built in, no setup needed        |
+| `ponytail`    | `ponytail`                | `github:DietrichGebert/ponytail` |
+| `i-have-adhd` | `i-have-adhd`             | `github:ayghri/i-have-adhd`      |
 
 Enabling `spec-driven-dev` enables all four automatically.
 
@@ -186,12 +186,12 @@ setup checklist, because nothing here requires it.
 
 - [ ] Trust the project folder in Claude Code.
 - [ ] Turn on auto-update for `yourorg-spec-driven-dev` via `/plugin`.
-- [ ] *(Optional)* Context7 API key — get one at
+- [ ] _(Optional)_ Context7 API key — get one at
       [context7.com/dashboard](https://context7.com/dashboard), export
       `CONTEXT7_API_KEY` in your shell profile, restart Claude Code. Skippable;
       falls back to the anonymous rate limit, and a `SessionStart` hook
       reminds you if it's unset.
-- [ ] *(Only if you'll run `/pr-review`)* `npx playwright install chromium`
+- [ ] _(Only if you'll run `/pr-review`)_ `npx playwright install chromium`
       once — needed for screenshot capture, not installed automatically.
 
 ---
@@ -228,7 +228,7 @@ This package does not provide these — they're project-specific by design.
 **Don't write these by hand.** Paste the block below into a fresh Claude
 Code session, in the new project's root, after step 1:
 
-````text
+```text
 You are bootstrapping the governing documentation for a brand-new project
 that will use the spec-driven-dev Claude Code plugin (already installed via
 .claude/settings.json). This repo has no prior history — do not invent
@@ -386,7 +386,7 @@ Do not pre-create docs/specs/<developer>/, docs/specs/archive/, or
 docs/verification-log/ — those come into existence the first time /spec-new
 or /spec-archive actually runs. Show me the full file list you're about to
 create before writing anything, and stop for my confirmation.
-````
+```
 
 ### 3. Validate before treating it as "the standard"
 
@@ -401,7 +401,7 @@ themselves here is expected, not a failure:
 - [ ] A self-applied fix after a verifier FAIL correctly required a second,
       independent pass rather than self-certifying.
 - [ ] If Husky is set up: a deliberately-introduced issue is caught by
-      *both* the agent-side hook and the human-edit-side Husky check.
+      _both_ the agent-side hook and the human-edit-side Husky check.
 - [ ] With neither Laya nor Jev configured, a tiering or triage decision
       still completes correctly on the agent's own judgment — the helper's
       absence should be invisible to the outcome, not just non-fatal.
@@ -409,31 +409,3 @@ themselves here is expected, not a failure:
       to end instead of the commands by hand — the first real exercise of
       the orchestrator/worker/verifier pipeline, including at least one
       multi-subspec wave if the work genuinely parallelizes.
-
----
-
-## Design decisions worth knowing before you touch this
-
-- **No version pinning yet — but checkpoints exist.** `main` is still what
-  auto-update tracks day to day; `plugin.json`'s `version` field stays
-  unset. But every skill promotion (see the bootstrap prompt's tooling-
-  capture rule) tags that commit `spec-driven-dev--v{next}` — Claude Code's
-  own `{plugin-name}--v{version}` convention for a git-sourced plugin —
-  so there's always a named, addressable checkpoint even without turning
-  on real pinning yet.
-- **Local dev loop is just edit → push → `/reload-plugins`.** No local
-  marketplace override — not worth the complexity at this scale. There's
-  no CI on this package either — run `node --test` (the `pr-review/` suite,
-  and any others) locally before you push. Auto-update means a push reaches
-  every developer immediately; nothing else catches a break first.
-- **That's a deliberate trade-off, not an oversight — but know the escape
-  hatch.** No review gate before a push goes live is the cost of the speed
-  we chose — reasonable for a single-author package where pushing is
-  already a manual, deliberate step, not an accident waiting to happen. If
-  a bad push still breaks something, point your own marketplace
-  registration at the last `spec-driven-dev--v{n}` tag instead of the
-  branch, rather than waiting on a fix to land on `main`.
-- **Spec numbers are scoped per developer folder, not global** — check your
-  own folder's highest number, never the whole `docs/specs/` tree.
-- **This is Claude Code only.** No Copilot parity, no tool-agnostic hedge,
-  by design.

@@ -1,0 +1,17 @@
+{
+  "name": "spec-driven-dev",
+  "description": "Shared spec-driven development workflow for Claude Code — commands, agents, skills, and hooks reused across multiple project repos. Provides the mechanism (spec-new, spec-implement, spec-verifier, spec-archive, hotfix, learn, pr-review) without any project-specific instructions.",
+  "author": {
+    "name": "Siddaharth Suman",
+    "email": "siddaharthsuman@gmail.com"
+  },
+  "dependencies": [
+    "superpowers@claude-plugins-official",
+    "context7@claude-plugins-official",
+    "ponytail@ponytail",
+    "i-have-adhd@i-have-adhd"
+  ],
+  "commands": ["./commands/"],
+  "skills": ["./skills/"],
+  "hooks": "./hooks/hooks.json"
+}

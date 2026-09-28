@@ -1,0 +1,20 @@
+{
+  "name": "siddaharthsuman-spec-driven-dev",
+  "owner": {
+    "name": "Siddaharth Suman",
+    "email": "siddaharthsuman@gmail.com"
+  },
+  "description": "Marketplace for the shared spec-driven-development plugin, reused across multiple project repos.",
+  "allowCrossMarketplaceDependenciesOn": [
+    "claude-plugins-official",
+    "ponytail",
+    "i-have-adhd"
+  ],
+  "plugins": [
+    {
+      "name": "spec-driven-dev",
+      "source": "./",
+      "description": "Shared spec-driven development workflow — commands, agents, skills, hooks, and the PR review pipeline."
+    }
+  ]
+}

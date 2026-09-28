@@ -1,0 +1,37 @@
+{
+  "decision": "Request changes",
+  "confidence": 4,
+  "riskLevel": 2,
+  "lede": "Adds invoice filtering but the new date-range validator allows an end date before the start date.",
+  "rubric": [false, true, true, true, true],
+  "lenses": {
+    "correctness": ["fail", "The date-range validator does not check that end >= start."],
+    "security": ["pass", "No new auth or data-access surface introduced."],
+    "simplicity": ["pass", "Single-purpose diff, no unrelated refactors."],
+    "accessibility": ["note", "New filter inputs have labels but no aria-describedby for the validation error."],
+    "consistency": ["pass", "Follows the existing filter-panel pattern from the runbook feature."]
+  },
+  "findings": [
+    {
+      "id": "B1",
+      "severity": "blocking",
+      "summary": "Date-range filter accepts an end date before the start date.",
+      "detail": "validateDateRange only checks both fields are present, never their order.",
+      "ref": "src/features/invoices/filters.ts:42"
+    },
+    {
+      "id": "N1",
+      "severity": "low",
+      "summary": "Filter panel's clear button has no accessible label.",
+      "ref": "src/features/invoices/FilterPanel.tsx:88"
+    }
+  ],
+  "spec": { "linked": true, "path": "docs/specs/012-invoice-filtering.md" },
+  "changes": {
+    "diffFiles": ["src/features/invoices/filters.ts", "src/features/invoices/FilterPanel.tsx"],
+    "flow": null
+  },
+  "notVerifiedExtra": [
+    "Whether the backend actually rejects an invalid date range server-side was not checked — this PR only covers the client-side filter UI."
+  ]
+}

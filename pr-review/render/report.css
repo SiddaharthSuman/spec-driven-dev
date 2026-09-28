@@ -1,0 +1,239 @@
+/* Report stylesheet. Self-contained — no external fonts or network
+   resources, since quality-gate.mjs loads this headless and checks it in
+   both light and dark theme. Keep every color pair here WCAG-contrast
+   checked by quality-gate before changing one. */
+
+:root {
+  --bg: #ffffff;
+  --panel: #f6f7f9;
+  --border: #d8dbe0;
+  --text: #1a1d21;
+  --text-muted: #52585f;
+  --link: #0b5fff;
+  --blocking: #b3261e;
+  --blocking-bg: #fdecea;
+  --high: #a15c00;
+  --high-bg: #fff2e0;
+  --medium: #6b5c00;
+  --medium-bg: #fff9db;
+  --pass: #146c2e;
+  --pass-bg: #e7f6ec;
+  --neutral-bg: #edeef1;
+}
+
+:root[data-theme='dark'] {
+  --bg: #14161a;
+  --panel: #1d2025;
+  --border: #33373d;
+  --text: #eceef1;
+  --text-muted: #a8adb5;
+  --link: #7aa6ff;
+  --blocking: #ff8a80;
+  --blocking-bg: #3a1d1b;
+  --high: #ffb74d;
+  --high-bg: #3a2b12;
+  --medium: #f0e070;
+  --medium-bg: #35300e;
+  --pass: #7fd99a;
+  --pass-bg: #16301f;
+  --neutral-bg: #26292f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--bg);
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  padding: 24px;
+  max-width: 960px;
+  margin-inline: auto;
+}
+
+h1 {
+  font-size: 1.375rem;
+  margin: 0 0 4px;
+}
+
+h2 {
+  font-size: 1.05rem;
+  margin: 28px 0 10px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: baseline;
+  margin-bottom: 16px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge-approve {
+  background: var(--pass-bg);
+  color: var(--pass);
+}
+
+.badge-request-changes {
+  background: var(--blocking-bg);
+  color: var(--blocking);
+}
+
+.badge-comment {
+  background: var(--neutral-bg);
+  color: var(--text-muted);
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.lede {
+  font-size: 1rem;
+  margin: 0 0 20px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+th, td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.check-yes::before {
+  content: '✓ ';
+  color: var(--pass);
+}
+
+.check-no::before {
+  content: '✗ ';
+  color: var(--blocking);
+}
+
+.finding {
+  border-left: 3px solid var(--border);
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  border-radius: 0 6px 6px 0;
+  background: var(--panel);
+}
+
+.finding[data-severity='blocking'] {
+  border-left-color: var(--blocking);
+  background: var(--blocking-bg);
+}
+
+.finding[data-severity='high'] {
+  border-left-color: var(--high);
+  background: var(--high-bg);
+}
+
+.finding[data-severity='medium'] {
+  border-left-color: var(--medium);
+  background: var(--medium-bg);
+}
+
+.finding-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-right: 6px;
+}
+
+.diff-block {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82rem;
+  white-space: pre;
+  max-width: 100%;
+}
+
+.visual-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+@media (max-width: 620px) {
+  .visual-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.visual-grid img {
+  max-width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  display: block;
+}
+
+.copy-btn {
+  font: inherit;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.copy-btn:hover {
+  background: var(--neutral-bg);
+}
+
+ul.plain {
+  margin: 0;
+  padding-left: 20px;
+}
+
+footer {
+  margin-top: 32px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* Never let a long path/URL/diff line force horizontal page scroll at
+   either viewport width quality-gate checks. */
+body, .panel, .finding {
+  overflow-wrap: anywhere;
+}

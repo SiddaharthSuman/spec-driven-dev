@@ -1,0 +1,11 @@
+{
+  "name": "@spec-driven-dev/pr-review",
+  "private": true,
+  "type": "module",
+  "description": "Deterministic backend for /pr-review — see README.md.",
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "playwright": "^1.48.0",
+    "typescript": "^5.6.0"
+  }
+}

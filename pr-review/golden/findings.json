@@ -1,0 +1,162 @@
+{
+  "meta": {
+    "pr": 812,
+    "repo": "siddaharthsuman/example-app",
+    "headSha": "2222222222222222222222222222222222222222",
+    "mergeSha": null,
+    "baseSha": "1111111111111111111111111111111111111111",
+    "baseBranch": "main",
+    "generatedAt": "2026-09-28T05:54:58.736Z"
+  },
+  "decision": "Request changes",
+  "confidence": 4,
+  "riskLevel": 2,
+  "lede": "Adds invoice filtering but the new date-range validator allows an end date before the start date.",
+  "rubric": [
+    {
+      "label": "No blocking finding",
+      "pass": false
+    },
+    {
+      "label": "Typecheck / lint / tests pass",
+      "pass": true
+    },
+    {
+      "label": "Small, single-purpose diff",
+      "pass": true
+    },
+    {
+      "label": "Reuses existing patterns",
+      "pass": true
+    },
+    {
+      "label": "No open user-visible inconsistency",
+      "pass": true
+    }
+  ],
+  "lenses": {
+    "correctness": [
+      "fail",
+      "The date-range validator does not check that end >= start."
+    ],
+    "security": [
+      "pass",
+      "No new auth or data-access surface introduced."
+    ],
+    "simplicity": [
+      "pass",
+      "Single-purpose diff, no unrelated refactors."
+    ],
+    "accessibility": [
+      "note",
+      "New filter inputs have labels but no aria-describedby for the validation error."
+    ],
+    "consistency": [
+      "pass",
+      "Follows the existing filter-panel pattern from the runbook feature."
+    ]
+  },
+  "findings": [
+    {
+      "id": "B1",
+      "severity": "blocking",
+      "summary": "Date-range filter accepts an end date before the start date.",
+      "detail": "validateDateRange only checks both fields are present, never their order.",
+      "ref": "src/features/invoices/filters.ts:42"
+    },
+    {
+      "id": "N1",
+      "severity": "low",
+      "summary": "Filter panel's clear button has no accessible label.",
+      "ref": "src/features/invoices/FilterPanel.tsx:88"
+    }
+  ],
+  "blockingCount": 1,
+  "spec": {
+    "linked": true,
+    "path": "docs/specs/012-invoice-filtering.md"
+  },
+  "notVerifiedExtra": [
+    "Whether the backend actually rejects an invalid date range server-side was not checked — this PR only covers the client-side filter UI."
+  ],
+  "facts": {
+    "sizeTier": "S",
+    "reviewableLines": 186,
+    "changedFiles": 3,
+    "excludedFiles": 1,
+    "deepUnits": 1,
+    "skimmedUnits": 0
+  },
+  "checks": {
+    "head": "/tmp/pr-review-fixture/head",
+    "base": "/tmp/pr-review-fixture/base",
+    "filesChecked": 2,
+    "typecheck": {
+      "errors": 0,
+      "sample": []
+    },
+    "lint": {
+      "errors": 0,
+      "warnings": 1,
+      "sample": [
+        {
+          "file": "src/features/invoices/FilterPanel.tsx",
+          "line": 88,
+          "ruleId": "jsx-a11y/control-has-associated-label",
+          "message": "Clear button has no accessible label",
+          "severity": "warning"
+        }
+      ]
+    },
+    "tests": {
+      "passed": 42,
+      "failed": 0,
+      "sample": []
+    }
+  },
+  "coverage": {
+    "totalScenarios": 2,
+    "capturedScenarios": 1,
+    "visualPct": 50
+  },
+  "visual": {
+    "scenarios": [
+      {
+        "name": "invoice-list-filter-panel-open",
+        "status": "captured",
+        "basePath": "invoice-list-filter-panel-open.base.png",
+        "headPath": "invoice-list-filter-panel-open.head.png",
+        "noiseFloor": 0.0031,
+        "diffScore": 0.0842
+      },
+      {
+        "name": "sweep-invoices",
+        "status": "unchanged",
+        "basePath": "sweep-invoices.base.png",
+        "headPath": "sweep-invoices.head.png",
+        "noiseFloor": 0.0022,
+        "diffScore": 0.0015
+      }
+    ],
+    "tryIt": [
+      "git fetch origin pull/812/head:pr-812 && git checkout pr-812",
+      "pnpm dev",
+      "open http://localhost:5173/invoices"
+    ],
+    "knownLimits": [
+      "API responses are mocked from src/services/*.api.ts shapes, not live data.",
+      "useUser() is stubbed — a PR touching src/hooks/useUser.ts cannot be verified visually."
+    ]
+  },
+  "diffFiles": [
+    {
+      "path": "src/features/invoices/filters.ts",
+      "diff": "--- a/src/features/invoices/filters.ts\n+++ b/src/features/invoices/filters.ts\n@@ -40,6 +40,7 @@\n-  return true;\n+  return start <= end;\n"
+    },
+    {
+      "path": "src/features/invoices/FilterPanel.tsx",
+      "diff": "--- a/src/features/invoices/FilterPanel.tsx\n+++ b/src/features/invoices/FilterPanel.tsx\n@@ -40,6 +40,7 @@\n-  return true;\n+  return start <= end;\n"
+    }
+  ],
+  "flow": null
+}

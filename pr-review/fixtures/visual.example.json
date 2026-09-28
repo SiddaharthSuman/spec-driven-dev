@@ -1,0 +1,29 @@
+{
+  "scenarios": [
+    {
+      "name": "invoice-list-filter-panel-open",
+      "status": "captured",
+      "basePath": "invoice-list-filter-panel-open.base.png",
+      "headPath": "invoice-list-filter-panel-open.head.png",
+      "noiseFloor": 0.0031,
+      "diffScore": 0.0842
+    },
+    {
+      "name": "sweep-invoices",
+      "status": "unchanged",
+      "basePath": "sweep-invoices.base.png",
+      "headPath": "sweep-invoices.head.png",
+      "noiseFloor": 0.0022,
+      "diffScore": 0.0015
+    }
+  ],
+  "tryIt": [
+    "git fetch origin pull/812/head:pr-812 && git checkout pr-812",
+    "pnpm dev",
+    "open http://localhost:5173/invoices"
+  ],
+  "knownLimits": [
+    "API responses are mocked from src/services/*.api.ts shapes, not live data.",
+    "useUser() is stubbed — a PR touching src/hooks/useUser.ts cannot be verified visually."
+  ]
+}

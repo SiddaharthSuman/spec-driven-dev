@@ -1,0 +1,19 @@
+{
+  "from": "1111111",
+  "to": "2222222",
+  "tier": "S",
+  "reviewableLines": 186,
+  "totalFiles": 3,
+  "excludedFileCount": 1,
+  "files": [
+    { "path": "src/features/invoices/filters.ts", "status": "M", "kind": "source", "lines": 96, "sensitive": false, "noise": false },
+    { "path": "src/features/invoices/FilterPanel.tsx", "status": "M", "kind": "source", "lines": 90, "sensitive": false, "noise": false },
+    { "path": "pnpm-lock.yaml", "status": "M", "kind": "config", "lines": 4, "sensitive": false, "noise": true }
+  ],
+  "units": {
+    "deep": [
+      { "key": "src/features", "files": ["src/features/invoices/filters.ts", "src/features/invoices/FilterPanel.tsx"], "lines": 186, "sensitive": false }
+    ],
+    "skimmed": []
+  }
+}
