@@ -152,9 +152,11 @@ Runs the **capture plan** (schema below) against both running servers with
 Playwright + Chromium:
 
 - Freezes CSS animations before every shot.
-- Uses a fixed `SUPER_ROLES` set of mocked roles/permissions broad enough to
-  satisfy every route guard, so a capture never dead-ends on an
-  authorization check.
+- Applies the plan's optional `auth` block (localStorage values, an optional
+  role key, and routes to fulfill) and each scenario's `mocks` before any page
+  script runs. Nothing app-specific is built in: with no `auth` and no `mocks`
+  the pages load exactly as the dev server serves them, and a scenario that ends
+  on a login screen is classified `unreliable`.
 - Shoots the **base** side twice first, specifically to measure a
   per-scenario noise floor (anti-aliasing jitter, font hinting) before
   comparing against head — this is what keeps sub-pixel rendering noise
@@ -192,12 +194,27 @@ Written by the `pr-reviewer` agent (not this CLI) as the input to `capture`.
 
 ```json
 {
+  "devCommand": "npm run dev",
+  "knownLimits": ["Optional extra limits to list in the report."],
+  "auth": {
+    "localStorage": { "<key the app reads>": "<value>" },
+    "roleKey": "<localStorage key that receives a scenario's role>",
+    "routes": [
+      {
+        "url": "**/<session-check-endpoint>**",
+        "status": 200,
+        "json": { "success": true }
+      }
+    ]
+  },
   "scenarios": [
     {
       "name": "invoice-list-default",
       "route": "/invoices",
-      "role": "Astra",
-      "mocks": { "GET /api/v1/invoices": { "shape": "from src/services/invoices.api.ts" } },
+      "role": "admin",
+      "mocks": {
+        "GET **/api/invoices**": { "status": 200, "json": { "items": [] } }
+      },
       "base": { "route": "/invoices" },
       "head": { "route": "/invoices" },
       "steps": [
@@ -205,37 +222,29 @@ Written by the `pr-reviewer` agent (not this CLI) as the input to `capture`.
         { "type": "waitFor", "selector": "[data-testid=invoice-table]" },
         { "type": "shot" }
       ]
-    },
-    {
-      "name": "invoice-detail-modal-open",
-      "route": "/invoices/123",
-      "role": "Astra",
-      "steps": [
-        { "type": "goto" },
-        { "type": "click", "selector": "[data-testid=open-detail]" },
-        { "type": "waitFor", "selector": "[role=dialog]" },
-        { "type": "shot" }
-      ]
     }
   ]
 }
 ```
 
-- `name` — unique, becomes the screenshot filename stem.
-- `route` — default path for both sides; override per side with `base`/
-  `head` when the two checkouts should hit different text or state.
-- `role` — which of the fixed `SUPER_ROLES` mocks to apply; omit for
-  routes with no role gate.
-- `mocks` — API response shapes, sourced **only** from the relevant
-  `src/services/*.api.ts` module (never invented).
-- `steps` — an ordered sequence, each one of:
-  - `goto` — navigate to the scenario's route.
-  - `click` / `fill` / `press` — interact with a selector.
-  - `waitFor` — block until a selector appears (prefer this over any fixed
-    delay).
-  - `shot` — capture the screenshot; a scenario may shoot more than once
-    (e.g. before and after opening a modal) by repeating `waitFor`/`shot`
-    pairs.
+- `devCommand` (optional): shown in the report's "try it" steps. Default is a
+  line telling the reader to use the dev command from `AGENTS.md`.
+- `knownLimits` (optional): extra lines for the report. "Authentication is
+  mocked" and "API responses are mocked" are added automatically when the plan
+  uses `auth` or `mocks`.
+- `auth` (optional): session setup applied to every scenario.
+  - `localStorage`: written before any page script runs.
+  - `roleKey`: if set, each scenario's `role` is written to this key.
+  - `routes`: requests to fulfill (`url` glob, optional `method`, `status`,
+    and `json` or `body`).
+- `name`: unique, becomes the screenshot filename stem.
+- `route`: default path for both sides; override per side with `base`/`head`.
+- `role` (optional): only used together with `auth.roleKey`.
+- `mocks`: `"[METHOD ]url-glob"` mapped to `{ status?, json | body }`. Copy
+  response bodies from the project's own API client, types or fixtures, never
+  invent them. An entry with no `json` or `body` is ignored.
+- `steps`: an ordered sequence, each one of `goto`, `click` / `fill` / `press`,
+  `waitFor` (prefer this over any fixed delay), or `shot`.
 
 `sweep`-generated scenarios are page-load only (`goto` → `waitFor` →
 `shot`); anything with a `click`/`fill`/`press` step is agent-authored to
@@ -243,12 +252,12 @@ cover what the diff actually changed.
 
 ## Size tiers (`triage`)
 
-| Tier | Reviewable lines | Behavior |
-| --- | --- | --- |
-| S | ≤ 400 | every unit read in full |
-| M | ≤ 2,000 | every unit read in full |
-| L | ≤ 10,000 | risk-ranked subset of units read in full ("deep"); the rest "skimmed" (capped diff) or "excluded" |
-| XL | > 10,000 | same as L, plus the agent must set `decision: "Comment"`, cap `confidence` at 2, and say in `lede` that this can't be reviewed as one PR |
+| Tier | Reviewable lines | Behavior                                                                                                                                 |
+| ---- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| S    | ≤ 400            | every unit read in full                                                                                                                  |
+| M    | ≤ 2,000          | every unit read in full                                                                                                                  |
+| L    | ≤ 10,000         | risk-ranked subset of units read in full ("deep"); the rest "skimmed" (capped diff) or "excluded"                                        |
+| XL   | > 10,000         | same as L, plus the agent must set `decision: "Comment"`, cap `confidence` at 2, and say in `lede` that this can't be reviewed as one PR |
 
 Risk ranking weights a file higher if its path matches the `SENSITIVE`
 pattern (auth, security, permission, token, and similar) — these get
@@ -273,12 +282,11 @@ Written by `capture`, read by `finish`:
   ],
   "tryIt": [
     "git fetch origin pull/<PR>/head:pr-<PR> && git checkout pr-<PR>",
-    "pnpm dev",
+    "npm run dev",
     "open http://localhost:5173/invoices"
   ],
   "knownLimits": [
-    "API responses are mocked from src/services/*.api.ts shapes, not live data.",
-    "useUser() is stubbed — a PR touching src/hooks/useUser.ts cannot be verified visually."
+    "API responses are mocked from src/services/*.api.ts shapes, not live data."
   ]
 }
 ```
@@ -321,20 +329,20 @@ almost always a regression, not an intended change.
 
 ## File map
 
-| File | Role |
-| --- | --- |
-| `cli.mjs` | Command dispatcher |
-| `prepare.mjs` | Orchestrator-side git/port setup, emits agent prompts |
-| `triage.mjs` | File classification, size tiering, risk-ranked unit selection |
-| `diff.mjs` | Compact per-unit diffs |
-| `checkout.mjs` | Worktree checkout / dispose / ref cleanup |
-| `checks.mjs` | tsc/eslint/test runners and their output parsers |
-| `affected-routes.mjs` | Import-graph walk → affected routes; also implements `sweep` |
-| `servers.mjs` | Throwaway dev server boot/stop |
-| `capture.mjs` / `imgdiff.mjs` | Screenshot capture and pixel-diff/noise-floor logic |
-| `assemble.mjs` | `review.json` + evidence → full `findings.json` data model |
-| `schema.mjs` | `findings.json` validator |
-| `build-report.mjs` / `finish.mjs` | Validate → render → gate → write `report.html`/`.md` |
-| `quality-gate.mjs` | Headless-browser acceptance checks on rendered HTML |
-| `render/html.mjs`, `render/md.mjs`, `render/inline.mjs`, `render/report.css`, `render/report.js` | Shared rendering layer, both output formats |
-| `fixtures/`, `golden/`, `test/*.check.mjs` | Fixtures, approved golden report, test suite |
+| File                                                                                             | Role                                                          |
+| ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------- |
+| `cli.mjs`                                                                                        | Command dispatcher                                            |
+| `prepare.mjs`                                                                                    | Orchestrator-side git/port setup, emits agent prompts         |
+| `triage.mjs`                                                                                     | File classification, size tiering, risk-ranked unit selection |
+| `diff.mjs`                                                                                       | Compact per-unit diffs                                        |
+| `checkout.mjs`                                                                                   | Worktree checkout / dispose / ref cleanup                     |
+| `checks.mjs`                                                                                     | tsc/eslint/test runners and their output parsers              |
+| `affected-routes.mjs`                                                                            | Import-graph walk → affected routes; also implements `sweep`  |
+| `servers.mjs`                                                                                    | Throwaway dev server boot/stop                                |
+| `capture.mjs` / `imgdiff.mjs`                                                                    | Screenshot capture and pixel-diff/noise-floor logic           |
+| `assemble.mjs`                                                                                   | `review.json` + evidence → full `findings.json` data model    |
+| `schema.mjs`                                                                                     | `findings.json` validator                                     |
+| `build-report.mjs` / `finish.mjs`                                                                | Validate → render → gate → write `report.html`/`.md`          |
+| `quality-gate.mjs`                                                                               | Headless-browser acceptance checks on rendered HTML           |
+| `render/html.mjs`, `render/md.mjs`, `render/inline.mjs`, `render/report.css`, `render/report.js` | Shared rendering layer, both output formats                   |
+| `fixtures/`, `golden/`, `test/*.check.mjs`                                                       | Fixtures, approved golden report, test suite                  |

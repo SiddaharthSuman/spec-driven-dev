@@ -1,36 +1,76 @@
-// `capture` — runs a capture plan against both a base and a head dev
-// server with Playwright + Chromium, classifies each scenario, and writes
+// `capture` runs a capture plan against both a base and a head dev server
+// with Playwright + Chromium, classifies each scenario, and writes
 // visual.json. See README.md's "capture" section and "Capture-plan JSON".
 //
-// Auth: uses the exact same mocked-session pattern documented in the
-// playwright-live-verification skill (_meta in localStorage + a mocked
-// /invoke route) rather than a real MSAL login, since this is screenshot
-// capture, not a real auth test.
+// Nothing here is specific to one app. Anything an app needs to get past a
+// login or to show data comes from the plan itself:
+//
+//   plan.auth    optional session setup applied to every scenario
+//     localStorage   { key: value } written before any page script runs
+//     roleKey        localStorage key that receives a scenario's `role`
+//     routes         [{ url, method?, status?, json | body, contentType? }]
+//   scenario.mocks   { "METHOD url-glob": { status?, json | body } } API mocks
+//   plan.devCommand  command shown in visual.json's "try it" steps
+//   plan.knownLimits extra known limits to list in visual.json
+//
+// With no plan.auth and no mocks, pages load exactly as the dev server serves
+// them. A scenario that ends up on a login screen is classified "unreliable".
 
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { compareImages } from './imgdiff.mjs';
 import { launchChromium } from './lib/browser.mjs';
 
-// Broad enough to satisfy every route guard the app defines, so a capture
-// never dead-ends on an authorization check. Adjust this list if the app
-// adds a role capture doesn't yet cover.
-const SUPER_ROLES = ['Astra'];
-
 const NOISE_FACTOR = 3; // a diff below noiseFloor * this factor reads as "unchanged"
 
-async function primePage(page, role) {
-  await page.addInitScript((r) => {
-    localStorage.setItem('_meta', 'pr-review-e2e-token');
-    if (r) localStorage.setItem('app_role_selected', r);
-  }, role ?? SUPER_ROLES[0]);
-  await page.route('**/api/v1/invoke**', (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ success: true }),
-    })
-  );
+// Turns a mock spec into { method, glob, response } or null when it has no
+// payload. Keys look like "GET **/api/items**" or just "**/api/items**".
+export function parseMock(key, value) {
+  if (!value || typeof value !== 'object') return null;
+  if (value.json === undefined && value.body === undefined) return null;
+  const m = /^(GET|POST|PUT|PATCH|DELETE)\s+(.+)$/i.exec(key.trim());
+  return {
+    method: m ? m[1].toUpperCase() : null,
+    glob: m ? m[2].trim() : key.trim(),
+    response: value,
+  };
+}
+
+async function fulfillRoutes(page, entries) {
+  for (const { method, glob, response } of entries) {
+    await page.route(glob, (route) => {
+      if (method && route.request().method() !== method) return route.fallback();
+      const hasJson = response.json !== undefined;
+      return route.fulfill({
+        status: response.status ?? 200,
+        contentType: response.contentType ?? (hasJson ? 'application/json' : 'text/plain'),
+        body: hasJson ? JSON.stringify(response.json) : String(response.body),
+      });
+    });
+  }
+}
+
+export async function primePage(page, plan, scenario) {
+  const auth = plan.auth ?? {};
+  const storage = { ...(auth.localStorage ?? {}) };
+  if (auth.roleKey && scenario.role) storage[auth.roleKey] = scenario.role;
+  if (Object.keys(storage).length > 0) {
+    await page.addInitScript((entries) => {
+      for (const [k, v] of Object.entries(entries)) localStorage.setItem(k, v);
+    }, storage);
+  }
+
+  const authRoutes = (auth.routes ?? []).map((r) => ({
+    method: r.method ? String(r.method).toUpperCase() : null,
+    glob: r.url,
+    response: r,
+  }));
+  await fulfillRoutes(page, authRoutes);
+
+  const mocks = Object.entries(scenario.mocks ?? {})
+    .map(([k, v]) => parseMock(k, v))
+    .filter(Boolean);
+  await fulfillRoutes(page, mocks);
 }
 
 async function runSteps(page, baseUrl, scenario, sideOverride, outDir, shotPrefix) {
@@ -73,6 +113,16 @@ function looksUnreliable(page) {
   return null;
 }
 
+export function buildKnownLimits(plan) {
+  const limits = [];
+  const usesAuth = plan.auth && (Object.keys(plan.auth.localStorage ?? {}).length > 0 || (plan.auth.routes ?? []).length > 0);
+  if (usesAuth) limits.push('Authentication is mocked from the capture plan, not a real login.');
+  const usesMocks = (plan.scenarios ?? []).some((s) => Object.entries(s.mocks ?? {}).some(([k, v]) => parseMock(k, v)));
+  if (usesMocks) limits.push('API responses listed in the plan are mocked, not live data.');
+  if (Array.isArray(plan.knownLimits)) limits.push(...plan.knownLimits.map(String));
+  return limits;
+}
+
 export async function capture(args) {
   const { plan: planPath, base: baseUrl, head: headUrl, out } = args;
   if (!planPath || !baseUrl || !headUrl || !out) {
@@ -89,7 +139,7 @@ export async function capture(args) {
   try {
     playwright = await import('playwright');
   } catch {
-    console.error('capture requires the "playwright" package — run: npx playwright install chromium');
+    console.error('capture requires the "playwright" package. Run: npx playwright install chromium');
     process.exitCode = 1;
     return;
   }
@@ -100,9 +150,10 @@ export async function capture(args) {
   for (const scenario of plan.scenarios ?? []) {
     const context = await browser.newContext({ reducedMotion: 'reduce' });
     const page = await context.newPage();
-    await primePage(page, scenario.role);
 
     try {
+      await primePage(page, plan, scenario);
+
       // Shoot base twice first, to measure this scenario's own noise floor
       // (anti-aliasing jitter, font hinting) before comparing against head.
       const baseShots1 = await runSteps(page, baseUrl, scenario, scenario.base, outDir, `${scenario.name}.base1`);
@@ -157,14 +208,11 @@ export async function capture(args) {
   const visual = {
     scenarios,
     tryIt: [
-      `git fetch origin pull/<PR>/head:pr-<PR> && git checkout pr-<PR>`,
-      'pnpm dev',
+      'git fetch origin pull/<PR>/head:pr-<PR> && git checkout pr-<PR>',
+      plan.devCommand ?? "start the dev server (the command is in the project's AGENTS.md)",
       `open ${headUrl}`,
     ],
-    knownLimits: [
-      'API responses are mocked from src/services/*.api.ts shapes, not live data.',
-      'useUser() is stubbed — a PR touching src/hooks/useUser.ts cannot be verified visually.',
-    ],
+    knownLimits: buildKnownLimits(plan),
   };
   if (args.baseCaption) visual.baseCaption = args.baseCaption;
   if (args.headCaption) visual.headCaption = args.headCaption;

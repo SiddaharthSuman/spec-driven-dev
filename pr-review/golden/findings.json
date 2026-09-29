@@ -39,14 +39,8 @@
       "fail",
       "The date-range validator does not check that end >= start."
     ],
-    "security": [
-      "pass",
-      "No new auth or data-access surface introduced."
-    ],
-    "simplicity": [
-      "pass",
-      "Single-purpose diff, no unrelated refactors."
-    ],
+    "security": ["pass", "No new auth or data-access surface introduced."],
+    "simplicity": ["pass", "Single-purpose diff, no unrelated refactors."],
     "accessibility": [
       "note",
       "New filter inputs have labels but no aria-describedby for the validation error."
@@ -140,12 +134,11 @@
     ],
     "tryIt": [
       "git fetch origin pull/812/head:pr-812 && git checkout pr-812",
-      "pnpm dev",
+      "npm run dev",
       "open http://localhost:5173/invoices"
     ],
     "knownLimits": [
-      "API responses are mocked from src/services/*.api.ts shapes, not live data.",
-      "useUser() is stubbed — a PR touching src/hooks/useUser.ts cannot be verified visually."
+      "API responses are mocked from src/services/*.api.ts shapes, not live data."
     ]
   },
   "diffFiles": [

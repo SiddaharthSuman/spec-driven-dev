@@ -1,154 +1,256 @@
 ---
 description:
-  Orchestrated wrapper around the spec-new → spec-implement → spec-verifier →
-  spec-archive loop — decomposes a spec into dependency-ordered waves,
-  dispatches workers in isolated worktrees, and escalates rather than looping
-  unsupervised. Optional; the four commands still work fine run by hand.
+  Orchestrated wrapper around the spec-new, spec-implement, spec-verifier,
+  spec-archive loop. Decomposes a spec into dependency-ordered waves of atomic
+  subspecs, shows every planned file change up front, dispatches workers in
+  isolated worktrees under model-based time budgets, verifies each worker
+  independently, records measured run statistics, and escalates rather than
+  looping unsupervised. Optional; the four commands still work fine run by hand.
 ---
 
 Take $ARGUMENTS as an existing spec's path (conforming to `_template.md`), or
-a rough idea to run through `/spec-new` first if no path is given — either
-way this drives the same four stages the manual pipeline uses, just through
-one entry point with worker parallelism added at the implement stage.
+a rough idea to run through `/spec-new` first if no path is given. Either way
+this drives the same four stages the manual pipeline uses, through one entry
+point with worker parallelism added at the implement stage.
 
-## Status narration: apply i-have-adhd
+Reference files ship with this plugin, one level below this file. Read each
+only at the step that names it:
 
-Apply i-have-adhd's output rules (action-first, numbered steps, no
-preamble/recap/tangents, cap lists at 5) to status updates and progress
-narration produced by this command — the pre-dispatch sanity check, per-wave
-reporting, and step 5's budget tracking. Never apply them to escalation
-writeups (step 3), contract-correction logs (step 3), or anything written to
-a spec file, tracker entry, or verification-log entry (step 6) — those stay
-complete regardless of active mode.
+| File                                                  | Read at                    | Holds                                                             |
+| ----------------------------------------------------- | -------------------------- | ----------------------------------------------------------------- |
+| `${CLAUDE_PLUGIN_ROOT}/engineer/worker-prompt.md`     | step 4                     | the verbatim block every worker prompt must contain               |
+| `${CLAUDE_PLUGIN_ROOT}/engineer/budgets-and-stats.md` | steps 2 and 8              | budget tables, overrun and model-ceiling rules, statistics events |
+| `${CLAUDE_PLUGIN_ROOT}/engineer/text-hygiene.md`      | before any code is written | plain-ASCII rules and the five enforcement layers                 |
 
-## 0. Don't force decomposition
+Two helper scripts, plain Node with no dependencies:
+`node ${CLAUDE_PLUGIN_ROOT}/stats/engineer-stats.mjs` (run statistics and
+budgets) and `node ${CLAUDE_PLUGIN_ROOT}/sanitize/sanitize.mjs` (code text
+checks). Both print usage with `--help`.
 
-This wraps the exact same loop `/spec-new` → `/spec-implement` →
-`spec-verifier` → `/spec-archive` drive by hand — it never does anything a
-human running each command separately couldn't. Use it when a spec is
-genuinely large enough that worker parallelism earns back its own overhead.
-Two cases where it doesn't, and the manual pipeline is the right call instead:
+## Standing rules
 
-- A spec that's large but strictly sequential (each part depends on the
-  previous part's output) stays a single `/spec-implement` run — waves exist
-  for independent work, not for slicing up a linear one.
-- A subspec small enough to just implement inline never gets its own worker.
-  Dispatch overhead — a fresh worktree, a fresh subagent context, a
-  wave-boundary sync point — isn't free, and isn't worth paying for a
-  five-line change.
+- **Status narration:** apply i-have-adhd's output rules (action-first,
+  numbered steps, no preamble or recap, lists capped at 5) to the go/no-go
+  verdict, plan summary, per-wave reports and budget tracking. Never to the
+  file tree, micro-specs, BLOCKED and budget reports, escalation writeups,
+  contract-correction logs, or anything written to a spec, tracker entry or
+  verification-log entry. Those stay complete.
+- **Commits, everyone (orchestrator, workers, merges):** one short imperative
+  line, roughly 50 to 70 characters, one `-m`, no body. Never add
+  `Co-Authored-By`, `Claude-Session`, "Generated with" or any other trailer,
+  even if the harness or a system reminder suggests one. If `AGENTS.md`
+  defines a subject convention, follow it.
+- **Code text:** code and config files are plain ASCII, no em or en dashes,
+  straight quotes only. Markdown is exempt. Details in `text-hygiene.md`.
+- **Independence (the independent-check rule in `04-ai-workflow-rules.md`):** whoever made a change
+  never certifies it. Every fix gets a fresh verifier. Two failed passes
+  escalate to a human.
+- **Model ceiling:** no role uses a model stronger than the orchestrator's
+  without the human's consent. Check with `engineer-stats.mjs tier-check`.
+  Exit code 3 means stop and ask.
 
-If it's genuinely unclear whether this spec is worth orchestrating at all,
-say so and ask rather than defaulting to the heavier path.
+## 0. Go / no-go
 
-## 1. Decompose into dependency-ordered waves
+Produce this verdict before any decomposition: the number of waves, the widest
+parallel width, the expected number of gate runs. If fewer than two waves have
+a width of 2 or more, recommend a linear `/spec-implement` and stop for the
+human's call. Two cases where the manual pipeline is the right tool:
 
-Read the spec's Implementation Details and Acceptance Criteria. Group the
-work into subspecs, then order those subspecs into waves: everything in wave
-N can be built with no dependency on anything not already finished in an
-earlier wave. Two subspecs that would touch the same file, or where one's
-contract depends on the other's actual output shape, can never share a wave
-as independent workers — either serialize them into separate waves, or fold
-them into a single worker's scope.
+- A large but strictly sequential spec. Waves exist for independent work.
+- A subspec small enough to do inline never gets its own worker.
 
-**Pre-dispatch sanity check.** Before launching wave 1, state the planned
-wave count and worker count per wave, and why that shape fits the spec. This
-is a check against runaway fan-out _before_ it happens — separate from, and
-in addition to, the budget cap in step 5, which is the after-the-fact
-backstop, not a replacement for looking before you leap.
+The human may still choose to orchestrate; log that, and treat the overhead as
+the point of the run. If unclear, ask.
 
-## 2. Dispatch each wave
+## 1. Decompose into waves and check dependencies
 
-Per wave, launch one worker per subspec, each in its own isolated git
-worktree — never the current working tree, and never a worktree shared with
-another worker in the same wave. A worker never writes a file another worker
-in the same wave owns; if two subspecs in the same wave would need to touch
-the same file, that's a decomposition mistake from step 1 to fix, not
-something to let both workers attempt and hope the diffs don't collide.
+Read the spec's Implementation Details and Acceptance Criteria. Group the work
+into subspecs and order them into waves: everything in wave N depends only on
+earlier waves. Two subspecs that touch the same file, or where one's contract
+depends on the other's real output, never share a wave. Serialize them or fold
+them into one worker.
 
-Follow the `subagent-dispatch` skill for how each worker's prompt is written
-— model tiering, the explicit "unsure → flag it, don't act" escape hatch, and
-keeping large scans out of the orchestrator's own context. Give each worker
-its subspec's own scope, the parent spec's relevant Acceptance Criteria, and
-the contract (function signatures, data shapes, file boundaries) it must
-produce for downstream waves to build against — not the full parent spec
-verbatim.
+**Atomic means quick:** a handful of files and a short criteria list, small
+enough that a worker finishes fast. If it cannot be described that small,
+split it.
 
-A fast System 1 decision model (e.g. Jev or Laya, if either is configured for
-this project) may be used here for cheap, high-volume tiering/triage calls —
-sizing a wave's worker count, classifying a subspec as mechanical vs.
-judgment-required. Neither is required: a missing or failed call to either
-must never block the run or degrade its outcome — the same tiering/triage
-decision made on the orchestrator's own judgment, with neither configured,
-must still land correctly.
+**Layer 1, the needs/provides table.** For every subspec list each symbol,
+function, type, i18n key, route, config entry, fixture or package it consumes
+but does not create, with its provider:
 
-## 3. Contract corrections vs. requirement escalation
+- `repo: <path>` if it exists today, confirmed by grep or the typechecker,
+  never from memory.
+- `<wave>-<id>` if another subspec produces it.
+- `none`, which is a gap.
 
-If a later wave reveals an earlier wave's contract was wrong — a function
-signature that doesn't fit how a downstream worker actually needs to call
-it, a data shape missing a field another worker needs — that's the
-orchestrator's own mistake to fix, not the parent spec's:
+Close every gap before dispatch by moving the item to an earlier wave or a
+wave-0 contract subspec. Anything crossing a wave boundary gets a contract stub
+landed first (signatures, types, keys), and the project's typecheck command
+(listed in `AGENTS.md`) runs against the stubs, so toolchain conflicts fail at
+planning time. Keep this mechanical
+(grep and typecheck), not open-ended reasoning.
 
-- Update the contract, never the parent spec's EARS Acceptance Criteria
-  (those describe the requirement itself, not the orchestrator's translation
-  of it into worker contracts).
-- Re-dispatch every downstream worker the corrected contract affects.
-- Log the correction explicitly — what was wrong, what changed, which
-  workers were re-dispatched. Never patch around a bad contract silently.
+**Layer 2, workers flag what the table missed** through the BLOCKED protocol
+(step 4). Neither layer is enough alone.
 
-If instead the problem traces back to a genuine misunderstanding of the
-requirement itself — not a decomposition or contract mistake, but the spec
-(or the brainstorm behind it) meant something other than what got built —
-escalate to a human instead, exactly as Rule 3 (`04-ai-workflow-rules.md`)
-already requires for any other unresolved ambiguity. Don't reinterpret the
-requirement yourself and re-dispatch as though it were only a contract fix.
+## 2. Pre-flight, then show the plan
 
-## 4. Verification — narrow, not exhaustive
+1. `engineer-stats.mjs start --run <slug> spec=<path> orchestrator=<model:effort>`
+2. Time the gates once, using the commands listed in `AGENTS.md`: typecheck
+   plus tests (per-wave gate), and the full check plus build (full gate). Record `gate-start` / `gate-end` events named
+   `baseline` and `full-baseline`.
+3. Register each subspec with a `subspec-plan` event (fields in
+   `budgets-and-stats.md`).
+4. `engineer-stats.mjs budgets --run <slug> orchestrator=<m:e> baseline_gate_min=<n> full_gate_min=<n>`.
+   Re-run if the subspecs change.
+5. For any role planned above the orchestrator's model, run `tier-check`.
 
-Typecheck, tests, and build run as plain commands after each wave, at no LLM
-cost. `spec-verifier`'s own job stays deliberately narrow here: confirm the
-EARS Acceptance Criteria's test coverage actually matches what was claimed,
-and read the diff for whatever genuinely isn't mechanically testable — the
-same two-tier split `spec-verifier.md`'s "Comment/Formatting-Only Diffs"
-section already uses for a single diff, extended here to the whole
-orchestrated run. Don't have the verifier re-derive what a passing typecheck
-already proved.
+Print the whole plan, then stop for approval before the first dispatch, unless
+the invocation said to proceed unattended.
 
-On FAIL: fix and re-verify, capped at two attempts total (same limit the
-manual loop uses) before escalating to a human — never a third unsupervised
-attempt.
+**File tree.** Every file the spec touches in any way, grouped by directory,
+each with an operation marker, owning subspec and progress marker:
 
-## 5. Budget and default tiering
+```
+Operation:  + create   ~ modify   - delete   > rename or move (old path after >)
+Progress:   ☐ pending   ◐ in progress   ✓ done (committed and verified)
 
-Track a token/time budget for the whole run. If it's exceeded, pause and
-escalate to a human rather than continuing unsupervised — the after-the-fact
-backstop behind step 1's before-the-fact sanity check, not a substitute for
-it.
+src/features/audit-dashboard/
+  + ☐ AuditTable.tsx          [W2-b]
+src/constants/
+  ~ ☐ audit-status.ts         [W1-a]
+src/routes/
+  > ☐ audit-detail.tsx        [W3-a]  (was audit.tsx)
+```
 
-Starting-point model tiering per role — validate this empirically against
-real runs, it's not a fixed rule:
+- Each file appears once with one owner. Two owners in one wave is a step 1
+  error: fix the plan, do not print it.
+- The tree is the scope contract. A changed file not in the tree goes under
+  `! unplanned` and gets an `unplanned` event. The orchestrator accepts it
+  into the plan (and says so) or sends it back.
+- Under the tree, print the wave table from the `budgets` output: subspecs,
+  workers, model and effort per role, budget per worker and wave, planning
+  budget, whole-run budget.
+- Reprint the tree (or the changed lines) whenever a worker moves state, at
+  each wave end and at finish. A file flips to `✓` only after the orchestrator
+  itself confirmed the commit (`git log`, the diff) and the independent check
+  in step 5 passed. Never on a worker's own "done".
 
-- **Orchestrator** — Sonnet, high effort. The one serial, high-leverage step:
-  a wrong decomposition corrupts every worker built against it, so this is
-  not where to economize.
-- **Workers** — Haiku. Mechanical, scoped implementation against an
-  already-decided contract.
-- **Verifier** — Sonnet, medium effort. Step 4's narrowed scope means less
-  judgment work per pass than a from-scratch review.
+## 3. Micro-specs, checked independently
 
-If real runs show a role needs a stronger or cheaper model than this
-starting point, that's exactly the kind of thing to flag via `/learn` once
-there's real metrics (step 6) to back the change — not something to
-adjust on a hunch mid-run.
+For every subspec, including wave-0 contract work, write a micro-spec to
+`.engineer/<slug>/w<N>-<id>.md`. Add `.engineer/` to `.git/info/exclude` if it
+is not already ignored. Each micro-spec is the worker's whole world:
 
-## 6. Finish
+- **Goal:** one or two sentences.
+- **Owned files:** the tree entries and operations. Nothing else may be written.
+- **Needs and provides:** its rows from the step 1 table.
+- **Contract:** signatures, shapes, keys and boundaries produced and consumed.
+- **Acceptance Criteria:** the parent EARS criteria that apply, each with a
+  stable ID and the test that proves it.
+- **Verification Checklist:** the commands and the commit proof expected.
 
-Once the last wave passes verification, run `/spec-archive` on the parent
-spec — the same finalization the manual pipeline already uses (condenses the
-tracker entry, moves the spec to `docs/specs/archive/`).
+The last two headings match `_template.md`, so `spec-verifier` runs on a
+micro-spec unchanged.
 
-Log this run's metrics — tokens, time, wave count, worker count, retries,
-final verdict — into `docs/verification-log/` alongside the spec's own entry,
-the same location the manual pipeline already writes to. This is what step
-5's "validate empirically" and Rule 7's tooling-discovery capture actually
-draw on later — a tiering adjustment or a captured skill with no metrics
+The orchestrator wrote them, so it cannot approve them. Have a fresh
+`spec-verifier`-style agent review all micro-specs in one batched pass. It
+re-derives the dependency table itself and checks: atomic, no owned-file
+overlap in a wave, a real provider for every need, contracts match the real
+toolchain, every parent criterion covered by exactly one micro-spec. Fix
+findings and re-check only what changed. Never skip this step to save time.
+
+## 4. Dispatch each wave
+
+One worker per subspec, each in its own isolated git worktree, never the
+current tree and never one shared within a wave. Record `wave-start`, then
+`worker-start` per worker.
+
+Follow the `subagent-dispatch` skill for how prompts are written. Give each
+worker its micro-spec path, not the full parent spec. Every worker prompt must
+include, verbatim, the block in `${CLAUDE_PLUGIN_ROOT}/engineer/worker-prompt.md`
+with the budget filled in. A worker never sees this file unless the prompt
+carries the rule.
+
+A fast System 1 model (Jev or Laya, if configured) may be used for cheap
+tiering and triage calls. Never required, never blocking; the orchestrator's
+own judgment must land the same decision.
+
+## 5. Verify each worker independently, then merge
+
+On a finished report, record `worker-end`, then before merging:
+
+1. Confirm the commit yourself with `git log` and the diff in the worker's
+   worktree. An empty diff or a missing commit is a failed worker.
+2. Confirm every changed file is in the tree. Otherwise `! unplanned`.
+3. Run `sanitize.mjs --check <files>`. Mechanical findings get a plain run.
+   Reported dashes or non-ASCII go back to the worker to rephrase.
+4. Launch a fresh verifier (never the worker or orchestrator) against the
+   micro-spec, with `verify-start` / `verify-end` events: per criterion ID,
+   does the named test exercise it and does the diff satisfy it? Narrow by
+   design. Workers in a wave are verified in parallel.
+5. PASS: merge and flip the files to `✓`. FAIL: the fix goes to a worker and
+   then a fresh verifier. Two attempts, then a human.
+
+BLOCKED and Budget Reports are not finished reports. They go to step 6 and
+step 8.
+
+## 6. Contract corrections, BLOCKED reports, escalation
+
+A BLOCKED report, or a later wave exposing a wrong contract, is the
+orchestrator's planning miss, not the parent spec's:
+
+- Update the contract and dependency table, never the parent's EARS criteria.
+- Move the missing item to an earlier wave or the wave-0 contract subspec.
+- Update the affected micro-specs and re-run their check (step 3).
+- Re-dispatch only the blocked worker and affected downstream workers.
+- Log what was wrong, what changed and who was re-dispatched. Record a
+  `blocked` event and tag the wave `dependency-gap`. Repeated gaps of one kind
+  are a `/learn` candidate for a new planner check.
+
+If the problem traces to a misunderstanding of the requirement itself,
+escalate to a human (the stop-and-ask rule in `04-ai-workflow-rules.md`). Do not reinterpret it
+and re-dispatch as a contract fix.
+
+## 7. Verification: narrow, not exhaustive
+
+Typecheck and tests run as plain commands after each wave. The full gate (lint,
+any dead-code check, build, `sanitize.mjs --check` over every changed file, plus
+e2e or visual checks where the spec needs them) runs once, after the last wave and before the
+final verifier. Record it with `gate-start` / `gate-end`. Say why in the wave
+report if a wave needs a heavier check.
+
+The final `spec-verifier` pass runs on the parent spec and stays narrow: does
+the EARS criteria's test coverage match what was claimed, and does the diff
+read right for what is not mechanically testable. Do not re-derive what
+typecheck or the step 5 checks proved. On FAIL, fix and re-verify, two attempts
+total, then a human.
+
+## 8. Time, budgets, statistics
+
+Read `${CLAUDE_PLUGIN_ROOT}/engineer/budgets-and-stats.md` now. In short:
+
+- Budgets come from `engineer-stats.mjs budgets`, never from memory.
+- An exhausted budget means the agent justifies it and the spec is revisited.
+  Splitting is one option, not a rule. Stop any worker at 2x its budget.
+- Every wave over or under budget gets a `cause=` tag on `wave-end`.
+- Record every state change as an event, as it happens.
+- If the whole-run budget is exceeded, pause and escalate.
+
+Default roles (a starting point, changed only on measured evidence via
+`/learn`): orchestrator Sonnet high, workers Haiku, micro-spec and per-worker
+verifiers Sonnet medium, final verifier Sonnet medium.
+
+## 9. Finish
+
+1. Run `/spec-archive` on the parent spec.
+2. Print the final tree, all `✓`, with any `! unplanned` still visible.
+3. `engineer-stats.mjs finish --run <slug> verdict=<PASS|FAIL|ESCALATED>`. It
+   writes `docs/verification-log/<date>-<slug>.run-stats.md` and `.json` and
+   refreshes `budget-calibration.json`.
+4. Link the `.md` from the spec's verification-log entry and commit the new
+   files with a short one-line message.
+5. Delete `.engineer/<slug>/`.
+
+A tiering change, a budget value or a captured skill with no measurements
 behind it is a guess, not a finding.

@@ -36,7 +36,9 @@ flowchart TB
 ```
 
 `/engineer` (also in this package) is an optional wrapper around this exact
-loop — same four stages, one entry point instead of running each by hand.
+loop — same four stages, one entry point instead of running each by hand. It
+adds worker parallelism, a live file tree, time budgets set from model and
+effort, and a measured statistics record for every run.
 `/pr-review` is a separate, parallel pipeline that never touches this loop —
 it writes to `.reviews/` in the project repo on its own.
 
@@ -73,7 +75,7 @@ click to describe. This script is deliberately shaped to be pasted straight
 into a PR description's "how was this tested" section, not thrown away
 after you run it.
 
-**2. Two separate local commits, already made — not just a suggestion.**
+**2. Two separate local commits, already made — not just a suggestion.** Each is one short line with no body and no attribution trailer.
 Everything under `docs/` (the archived spec file, the tracker update, the
 new verification-log entry, any living-doc update) goes in one commit;
 everything else — the actual application code — goes in another. Nothing
@@ -82,8 +84,8 @@ process and one that's pure code, instead of 20 changed files where only 5
 are the feature itself.
 
 ```
-docs(spec-042): archive — request-creation form validation
-feat(requests): validate required fields on request-creation form
+Archive spec 042 request-creation form validation
+Add request-creation form validation
 ```
 
 If a changed file doesn't cleanly sort into either bucket, that's a
@@ -96,16 +98,43 @@ one tangled one.
 
 ---
 
+## Commit and code text rules
+
+These apply to every agent, subagent and merge commit this package drives.
+
+- **Commits:** one short imperative line, no body, and never a
+  `Co-Authored-By`, `Claude-Session` or any other attribution trailer.
+- **Code text:** code and config files (JS/TS, JSON, CSS, YAML, TOML, shell,
+  HTML) are plain ASCII English as typed on a US keyboard. No em or en dashes
+  (rephrase the sentence, don't swap in a hyphen), straight quotes only, three
+  dots not the ellipsis character, no markdown asterisks or heading hashes in
+  comments or strings, no non-ASCII characters, no trailing whitespace.
+  Markdown files are exempt.
+
+`sanitize/sanitize.mjs` enforces this. It fixes what is mechanical (hidden
+characters, unusual spaces, lookalike letters, curly quotes, trailing
+whitespace) and only reports what needs a person to rephrase (dashes, other
+non-ASCII). Enforcement runs in layers because hooks don't reliably fire in
+subagents or git worktrees: the worker's own check, the orchestrator's check on
+each worker diff, this plugin's `PostToolUse` hook, the project's Husky
+pre-commit hook, and the full gate. The details live in
+`engineer/text-hygiene.md`.
+
+---
+
 ## What lives here vs. what lives in each project repo
 
-| This package (`spec-driven-dev`)                                                                                            | Each consuming project's own repo                                                          |
-| --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `commands/` — `spec-new.md`, `spec-implement.md`, `spec-archive.md`, `hotfix.md`, `learn.md`, `pr-review.md`, `engineer.md` | `CLAUDE.md`, `AGENTS.md`                                                                   |
-| `agents/` — `explorer.md`, `spec-verifier.md`, `pr-reviewer.md`                                                             | `docs/context/01`–`06`                                                                     |
-| `skills/` — `subagent-dispatch/`, `mock-first-api/`                                                                         | `docs/specs/` (per-developer folders), `docs/specs/_template.md`, `_amendment-template.md` |
-| `hooks/` — Context7 key check, any agent-side enforcement `learn.md` proposes                                               | `docs/specs/archive/`, `docs/verification-log/`                                            |
-| `pr-review/` — `cli.mjs` + ~15 modules, fixtures, golden files, tests                                                       | `.husky/` (pre-commit/pre-push — human-edit-side enforcement; can't live in a plugin)      |
-| `system-one/decide.mjs` — optional Laya/Jev decision helper, never required                                                 |                                                                                            |
+| This package (`spec-driven-dev`)                                                                                                                      | Each consuming project's own repo                                                          |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `commands/` — `spec-new.md`, `spec-implement.md`, `spec-archive.md`, `hotfix.md`, `learn.md`, `pr-review.md`, `run-skill-generator.md`, `engineer.md` | `CLAUDE.md`, `AGENTS.md`                                                                   |
+| `agents/` — `explorer.md`, `spec-verifier.md`, `pr-reviewer.md`                                                                                       | `docs/context/01`–`06`                                                                     |
+| `skills/` — `subagent-dispatch/`, `mock-first-api/`, `playwright-live-verification/`                                                                  | `docs/specs/` (per-developer folders), `docs/specs/_template.md`, `_amendment-template.md` |
+| `hooks/` — Context7 key check, the `PostToolUse` sanitize hook, any agent-side enforcement `learn.md` proposes                                        | `docs/specs/archive/`, `docs/verification-log/` (including per-run statistics)             |
+| `engineer/` — reference files `/engineer` reads at the step that needs them (worker prompt, budgets and stats, text hygiene)                          | `.husky/` (pre-commit/pre-push — human-edit-side enforcement; can't live in a plugin)      |
+| `sanitize/` — `sanitize.mjs` and its tests                                                                                                            | `scripts/sanitize.mjs` — a vendored copy of the file to its left                           |
+| `stats/` — `engineer-stats.mjs` (run statistics and budgets) and its tests                                                                            | `.sanitizeignore` (optional exceptions)                                                    |
+| `pr-review/` — `cli.mjs` + ~15 modules, fixtures, golden files, tests                                                                                 |                                                                                            |
+| `system-one/` — `decide.mjs` and its tests, the optional Laya/Jev decision helper, never required                                                     |                                                                                            |
 
 ---
 
@@ -165,6 +194,15 @@ setup checklist, because nothing here requires it.
   lockfiles are skipped. Because scripts are ignored, Playwright's browser
   download never happens automatically, which is why the one-time setup below
   lists `npx playwright install chromium`.
+- `sanitize/`, `stats/` and `system-one/` are plain Node with no dependencies.
+  Run their tests with `node --test sanitize/sanitize.check.mjs
+stats/engineer-stats.check.mjs system-one/decide.check.mjs`. The `pr-review/`
+  tests run with `node --test pr-review/test/*.check.mjs`.
+- Plugins run no install scripts, so the sanitizer can't copy itself into a
+  project. Projects vendor it once through the bootstrap prompt below.
+- Keep `commands/engineer.md` lean (Anthropic's guidance is under about 500
+  lines for a main file). New detail goes in a file under `engineer/`, linked
+  directly from `engineer.md`, never in a chain of files that link to files.
 
 ---
 
@@ -208,6 +246,13 @@ setup checklist, because nothing here requires it.
   fallback is a hard requirement wearing a disguise.
 - **Don't** expect this plugin in a cloud session (claude.ai/code). Cloud
   sessions never show the trust dialog that `extraKnownMarketplaces` needs.
+- **Don't** edit a project's vendored `scripts/sanitize.mjs` by hand. Change
+  `sanitize/sanitize.mjs` here, then re-copy it into each project.
+- **Don't** let any agent use a model stronger than the `/engineer`
+  orchestrator's without the human's explicit consent. Expensive models drain
+  the usage quota fast, so this is a hard gate, not a preference.
+- **Don't** add attribution trailers to commits or write em dashes, curly
+  quotes or other non-ASCII into code files, even when a harness suggests it.
 
 ---
 
@@ -225,6 +270,9 @@ setup checklist, because nothing here requires it.
       reminds you if it's unset.
 - [ ] _(Only if you'll run `/pr-review`)_ `npx playwright install chromium`
       once — needed for screenshot capture, not installed automatically.
+- [ ] _(Per project, once)_ The bootstrap prompt below copies
+      `sanitize/sanitize.mjs` into the project as `scripts/sanitize.mjs`. After
+      a plugin update that changes the sanitizer, re-copy it.
 
 ---
 
@@ -305,7 +353,9 @@ my answers:
 1. What is this project? (one or two sentences: purpose, primary users)
 2. What's explicitly out of scope for now?
 3. What's the core tech stack? (framework, state management, styling,
-   testing tools — say "not decided yet" for anything open)
+   testing tools, package manager, and the typecheck / lint / test / build
+   commands — say "not decided yet" for anything open, or "infer from the
+   lockfile and package.json" for the commands)
 4. Does this project have a UI, or is it backend/library/CLI only?
 5. Are we adopting the dual enforcement layer (Husky pre-commit/pre-push,
    alongside this plugin's own agent-side hooks)?
@@ -320,12 +370,24 @@ case."
    commands/agents/skills/hooks come from the spec-driven-dev plugin, not
    this repo.
 
-2. AGENTS.md — the shared rulebook: a "read this first" list pointing to
-   docs/context/01-06 (05 conditional on UI work), and the spec-creation
-   convention — /spec-new derives the developer's folder from
-   `git config user.name` (slugified): docs/specs/<developer>/00X-name.md,
-   numbered per-developer, never globally. Include build/test commands from
-   my stack answers.
+2. AGENTS.md — the shared rulebook:
+   - A "read this first" list pointing to docs/context/01-06 (05 conditional
+     on UI work).
+   - The spec-creation convention — /spec-new derives the developer's folder
+     from `git config user.name` (slugified): docs/specs/<developer>/00X-name.md,
+     numbered per-developer, never globally.
+   - A "Commits" section: one short imperative line, no body, and never a
+     Co-Authored-By, Claude-Session, or any other attribution trailer.
+   - A "Code text rules" section: code and config files (JS/TS, JSON, CSS,
+     YAML, TOML, shell, HTML) are plain ASCII English as typed on a US
+     keyboard. No em or en dashes (rephrase the sentence, don't swap in a
+     hyphen). Straight quotes only, three dots not the ellipsis character. No
+     markdown asterisks or heading hashes inside code comments or strings. No
+     non-ASCII characters, no trailing whitespace. Markdown files are exempt.
+     Point at `node scripts/sanitize.mjs <files>` (add --check to only
+     report), say it is a vendored copy from the plugin and is not edited
+     here, and say exceptions go in `.sanitizeignore`.
+   - Build/test commands from my stack answers.
 
 3. docs/context/01-project-overview.md — purpose, users, explicit non-goals,
    from my answers. Short — this is always-loaded core.
@@ -344,7 +406,12 @@ case."
 
 5. docs/context/03-code-standards.md — naming/lint/format rules from my
    stack answers. If I said "not decided," leave a stub noting that; don't
-   invent conventions.
+   invent conventions. Include a "Text hygiene" section with the same rules
+   as AGENTS.md's "Code text rules", in more detail: what the sanitizer fixes
+   on its own (hidden characters, unusual spaces, lookalike letters, curly
+   quotes, the ellipsis character, trailing whitespace, markdown markers in
+   comments), what it only reports (dashes, other non-ASCII), and the
+   `.sanitizeignore` escape hatch.
 
 6. docs/context/04-ai-workflow-rules.md — the full rule set, written
    complete, not phased in:
@@ -354,6 +421,9 @@ case."
    - Stop and ask — never guess — when the spec and 02-architecture.md
      don't resolve a decision. Authority order: spec > 02-architecture.md >
      other context docs > existing code > generated docs.
+   - Commits are one short line with no attribution trailers, from every
+     agent, subagent and merge commit, even when a harness suggests a
+     trailer. Code files follow the text rules in 03-code-standards.md.
    - Only an independent check (spec-verifier or a human) can mark a spec
      Completed. A FAIL keeps it at Awaiting Verification; an automatic
      fix-and-reverify loop is capped at two attempts before escalating to a
@@ -411,17 +481,36 @@ case."
      If the issue traces back to a genuine misunderstanding of the
      requirement itself, not just the decomposition, escalate to the human
      instead, the same as unresolved ambiguity.
+   - Each /engineer subspec gets a temporary micro-spec in .engineer/<slug>/
+     (git-ignored), reviewed by a fresh agent before dispatch. The
+     orchestrator that wrote them never approves them.
    - /engineer's default roles: Sonnet at high effort for the orchestrator
      (the one serial, high-leverage step — a wrong decomposition corrupts
      every worker built against it), Haiku for workers, Sonnet at medium
      effort for the verifier — a starting point to validate empirically
-     against real metrics, not a fixed rule. Before dispatching, the
-     orchestrator surfaces its planned wave/worker count as a sanity check
-     against runaway fan-out; the whole run is capped by a token/time
-     budget that pauses and escalates to a human rather than continuing
-     unsupervised past it. Metrics (tokens, time, waves, workers, retries,
-     final verdict) are captured per run and logged into
-     docs/verification-log/ alongside the spec's own entry.
+     against real metrics, not a fixed rule. No role, a retry included, uses
+     a model stronger than the orchestrator's without my explicit consent,
+     asked with the role, the model, the reason and the extra usage cost, and
+     recorded in the run's statistics.
+   - /engineer guardrails: before dispatching, the orchestrator surfaces its
+     planned wave/worker count and every planned file change as a sanity
+     check against runaway fan-out. Each wave and the whole run have a time
+     budget derived from size, model and effort. An exhausted worker budget
+     is justified in a Budget Report and the micro-spec is revisited
+     (splitting is optional). A worker is stopped at 2x its budget, and an
+     exceeded whole-run budget pauses and escalates to a human rather than
+     continuing unsupervised.
+   - /engineer metrics are measured, not remembered: each run writes
+     docs/verification-log/<date>-<slug>.run-stats.md (for people) and
+     .run-stats.json (for tools) with planned vs. actual time, models,
+     attempts, BLOCKED reports, verifier verdicts, gate times, tokens,
+     unplanned files and consent decisions. budget-calibration.json in the
+     same folder is refreshed from them and replaces the default budget
+     tables once a size, tier and effort has 3 samples.
+   - Text hygiene is enforced in layers because hooks don't fire everywhere:
+     the worker's own sanitizer run, the orchestrator's check on each worker
+     diff, the plugin's PostToolUse hook, the Husky pre-commit check, and the
+     full gate.
    - Model-tiering, skill-matching, mechanical-diff, and PR-triage
      decisions may optionally call this package's system-one/decide.mjs
      helper for a fast, cheap answer. Never required — every one of these
@@ -444,14 +533,31 @@ case."
     Added/Modified/Removed relative to the spec it amends, with an Amends:
     field pointing at the original.
 
-11. If I said yes to the dual enforcement layer: scaffold
+11. scripts/sanitize.mjs — a vendored, unchanged copy of the plugin's
+    sanitize/sanitize.mjs. Find the plugin's install folder under
+    ~/.claude/plugins/ (the marketplace clone or cache) and copy the file. If
+    you can't find it, stop and tell me instead of writing your own version.
+
+12. Make sure .engineer/ (the temporary /engineer working folder) is ignored:
+    add it to .gitignore.
+
+13. If I said yes to the dual enforcement layer: scaffold
     .husky/pre-commit and .husky/pre-push running checks that match my
     stack answers, and wire package.json's prepare script.
+    - pre-commit: lint on staged files, typecheck, a check that blocks
+      `[HOTFIX-` log tags on main or master only (allowed on other branches,
+      per /hotfix), and `node scripts/sanitize.mjs --check --staged`.
+    - pre-push: the full check command, then build.
+    - Confirm .husky/_ is ignored, and tell me plainly that Husky 9's default
+      hooks folder doesn't exist in new git worktrees, so the pre-commit
+      hook won't fire there. Don't try to work around it without asking me.
 
 Do not pre-create docs/specs/<developer>/, docs/specs/archive/, or
-docs/verification-log/ — those come into existence the first time /spec-new
-or /spec-archive actually runs. Show me the full file list you're about to
-create before writing anything, and stop for my confirmation.
+docs/verification-log/ — those come into existence the first time /spec-new,
+/spec-archive or /engineer actually runs. Show me the full file list you're
+about to create before writing anything, and stop for my confirmation.
+Afterwards, list anything you left as a stub or couldn't verify, and don't
+claim any hook or check works until you've run it.
 ```
 
 ### 3. Validate before treating it as "the standard"
@@ -468,6 +574,9 @@ themselves here is expected, not a failure:
       independent pass rather than self-certifying.
 - [ ] If Husky is set up: a deliberately-introduced issue is caught by
       _both_ the agent-side hook and the human-edit-side Husky check.
+- [ ] A dash or curly quote introduced on purpose in a `.ts` file is caught by
+      `node scripts/sanitize.mjs --check` and by the Husky pre-commit hook, and
+      a commit made by an agent has one short line and no attribution trailer.
 - [ ] With neither Laya nor Jev configured, a tiering or triage decision
       still completes correctly on the agent's own judgment — the helper's
       absence should be invisible to the outcome, not just non-fatal.
@@ -475,15 +584,21 @@ themselves here is expected, not a failure:
       to end instead of the commands by hand — the first real exercise of
       the orchestrator/worker/verifier pipeline, including at least one
       multi-subspec wave if the work genuinely parallelizes.
+- [ ] After that `/engineer` run, `docs/verification-log/` holds a
+      `*.run-stats.md` file and `budget-calibration.json`, and `.engineer/`
+      is gone.
 
 ---
 
 ## Troubleshooting
 
-| Symptom                                                     | Likely cause                                                          | Fix                                                                                                                                                                                                      |
-| ----------------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| No commands after first trust                               | Marketplace clones in the background                                  | `/reload-plugins` or restart; check `/plugin` → **Errors**                                                                                                                                               |
-| `Plugin "…" not cached at …`                                | Enabled but not fetched yet                                           | `/plugin` to refresh, or use the manual install                                                                                                                                                          |
-| `… is enabled in project settings but isn't installed here` | External-source plugin enabled only in project settings isn't fetched | `claude plugin install <name>@<marketplace> --scope project`                                                                                                                                             |
-| Plugin loads but dependencies are missing                   | Allowlist entry missing (see Dependencies)                            | Fix `marketplace.json`, then `/reload-plugins`                                                                                                                                                           |
+| Symptom                                                     | Likely cause                                                          | Fix                                                                                                                                                                                          |
+| ----------------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| No commands after first trust                               | Marketplace clones in the background                                  | `/reload-plugins` or restart; check `/plugin` → **Errors**                                                                                                                                   |
+| `Plugin "…" not cached at …`                                | Enabled but not fetched yet                                           | `/plugin` to refresh, or use the manual install                                                                                                                                              |
+| `… is enabled in project settings but isn't installed here` | External-source plugin enabled only in project settings isn't fetched | `claude plugin install <name>@<marketplace> --scope project`                                                                                                                                 |
+| Plugin loads but dependencies are missing                   | Allowlist entry missing (see Dependencies)                            | Fix `marketplace.json`, then `/reload-plugins`                                                                                                                                               |
 | Pushed a change, nothing updates                            | Auto-update off, or a `version` field is set                          | Enable `autoUpdate`; remove `version`; or run `claude plugin marketplace update siddaharthsuman-spec-driven-dev` then `claude plugin update spec-driven-dev@siddaharthsuman-spec-driven-dev` |
+| Commit in a worker's worktree skipped the sanitize check    | Husky 9's default hooks folder isn't created in new worktrees         | Expected. The worker's own check and the orchestrator's diff check cover it. To make the hook fire there, point `core.hooksPath` at a tracked or absolute folder                             |
+| An Edit fails right after a Write or Edit on the same file  | The `PostToolUse` sanitize hook rewrote the file                      | Re-read the file before the next Edit on it                                                                                                                                                  |
+| `/engineer` stopped and asked about a model                 | A role was planned on a model stronger than the orchestrator's        | Answer the consent question, or pick a model at or below the orchestrator's; `tier-check` exits with code 3 in this case                                                                     |
