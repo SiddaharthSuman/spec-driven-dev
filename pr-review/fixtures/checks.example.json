@@ -2,9 +2,38 @@
   "head": "/tmp/pr-review-fixture/head",
   "base": "/tmp/pr-review-fixture/base",
   "filesChecked": 2,
-  "typecheck": { "errors": 0, "sample": [] },
-  "lint": { "errors": 0, "warnings": 1, "sample": [
-    { "file": "src/features/invoices/FilterPanel.tsx", "line": 88, "ruleId": "jsx-a11y/control-has-associated-label", "message": "Clear button has no accessible label", "severity": "warning" }
-  ] },
-  "tests": { "passed": 42, "failed": 0, "sample": [] }
+  "typecheck": {
+    "tool": "tsc -b",
+    "command": "tsc -b --pretty false",
+    "exitCode": 0,
+    "status": "pass",
+    "errors": 0,
+    "sample": []
+  },
+  "lint": {
+    "errors": 0,
+    "warnings": 1,
+    "sample": [
+      {
+        "file": "src/features/invoices/FilterPanel.tsx",
+        "line": 88,
+        "ruleId": "jsx-a11y/control-has-associated-label",
+        "message": "Clear button has no accessible label",
+        "severity": "warning"
+      }
+    ],
+    "tool": "eslint",
+    "command": "eslint --format json src/features/invoices/FilterPanel.tsx",
+    "exitCode": 0,
+    "status": "pass"
+  },
+  "tests": {
+    "tool": "vitest",
+    "command": "vitest run --reporter=json",
+    "exitCode": 0,
+    "status": "pass",
+    "passed": 42,
+    "failed": 0,
+    "sample": []
+  }
 }

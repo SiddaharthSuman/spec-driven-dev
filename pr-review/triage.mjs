@@ -1,4 +1,4 @@
-// `triage` — classifies every changed file, excludes noise from the
+// `triage`: classifies every changed file, excludes noise from the
 // reviewable line count, buckets the PR into a size tier, and picks which
 // units get a full ("deep") read vs. a capped ("skimmed") one. See
 // README.md's "Size tiers" section for the exact thresholds and ranking.

@@ -1,8 +1,8 @@
-// Maintainer utility — NOT part of the shipped test/*.check.mjs suite
+// Maintainer utility: NOT part of the shipped test/*.check.mjs suite
 // (`node --test` only picks up *.check.mjs). Regenerates golden/report.html,
 // golden/report.md, and golden/findings.json from fixtures/. Run this
 // deliberately, after confirming a golden diff is an intended rendering
-// change and not a regression — test/render.check.mjs is what actually
+// change and not a regression, test/render.check.mjs is what actually
 // enforces golden parity on every run:
 //
 //   node test/smoke.mjs && git diff golden/
@@ -33,7 +33,7 @@ async function main() {
   };
 
   const findings = buildFindings({ review, triage, checks, visual, meta });
-  // Skip real git-diff enrichment in this smoke test (no repo on disk) —
+  // Skip real git-diff enrichment in this smoke test (no repo on disk),
   // finish.mjs does this step for real; here we just fabricate plausible
   // diff text so render/html.mjs has something to render.
   findings.diffFiles = review.changes.diffFiles.map((p) => ({

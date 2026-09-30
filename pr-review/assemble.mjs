@@ -1,6 +1,6 @@
 // Merges the agent-authored review.json with the triage/checks/visual
 // evidence into the full findings.json data model that render/ consumes.
-// This is the "mechanical assembly" step `finish` calls — everything here
+// This is the "mechanical assembly" step `finish` calls, everything here
 // is computed from evidence, nothing here is model judgment. See
 // README.md's "finish" section and fixtures/review.example.json for the
 // exact shape review.json must already match by the time it reaches here.
@@ -13,9 +13,40 @@ const RUBRIC_LABELS = [
   'No open user-visible inconsistency',
 ];
 
+const CHECK_ROWS = [
+  ['typecheck', 'Typecheck'],
+  ['lint', 'Lint'],
+  ['tests', 'Tests'],
+];
+
+// A row passes only when its status says so. "preexisting" (the base checkout
+// fails the same way) and "skipped" (nothing to run) do not block. "unknown"
+// (could not run, timed out, unparsable) never counts as a pass. Rows written
+// before statuses existed fall back to their counts.
+function rowPasses(row) {
+  if (!row) return true;
+  if (row.status) return ['pass', 'skipped', 'preexisting'].includes(row.status);
+  return (row.errors ?? 0) === 0 && (row.failed ?? 0) === 0;
+}
+
 function checksAllPass(checks) {
   if (!checks) return null;
-  return (checks.typecheck?.errors ?? 0) === 0 && (checks.lint?.errors ?? 0) === 0 && (checks.tests?.failed ?? 0) === 0;
+  return CHECK_ROWS.every(([key]) => rowPasses(checks[key]));
+}
+
+// Lines for the "Not independently verified" list: every check that could
+// not run, and every check that only passed because the base fails too.
+export function checkCaveats(checks) {
+  if (!checks) return [];
+  const lines = [];
+  for (const [key, label] of CHECK_ROWS) {
+    const row = checks[key];
+    if (!row) continue;
+    if (row.status === 'unknown') lines.push(`${label} could not be verified: ${row.note ?? 'the command did not produce a usable result'}.`);
+    if (row.status === 'preexisting') lines.push(`${label} reports ${row.errors ?? row.failed ?? 'some'} problem(s), but the base branch has the same or more, so they are not attributed to this PR.`);
+    if (row.status === 'skipped' && row.note && row.note !== 'skipped by request') lines.push(`${label} did not run: ${row.note}.`);
+  }
+  return lines;
 }
 
 function buildVerificationRows(review, checks) {
@@ -63,7 +94,7 @@ export function buildFindings({ review, triage, checks, visual, meta }) {
     findings,
     blockingCount,
     spec: review.spec ?? { linked: false, path: null },
-    notVerifiedExtra: review.notVerifiedExtra ?? [],
+    notVerifiedExtra: [...(review.notVerifiedExtra ?? []), ...checkCaveats(checks)],
     facts: {
       sizeTier: triage?.tier ?? null,
       reviewableLines: triage?.reviewableLines ?? null,

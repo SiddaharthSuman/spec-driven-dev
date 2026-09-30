@@ -1,0 +1,2 @@
+# The markdown report renderer emits bold markers on purpose.
+pr-review/render/md.mjs

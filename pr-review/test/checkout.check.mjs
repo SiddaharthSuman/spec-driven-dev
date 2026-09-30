@@ -1,4 +1,4 @@
-// Real worktree add/remove and ref create/delete against a throwaway repo —
+// Real worktree add/remove and ref create/delete against a throwaway repo,
 // the same sequence validated by hand while building this package
 // (checkout -> confirm node_modules symlink + .env copy -> dispose ->
 // confirm clean removal -> refs-delete -> confirm no refs remain).
@@ -22,7 +22,7 @@ before(async () => {
   sha = await commitAll(repo, 'initial');
 
   // node_modules and .env are deliberately created AFTER the commit and
-  // never git-added — in a real repo neither is tracked, and checkout's
+  // never git-added: in a real repo neither is tracked, and checkout's
   // whole job is to bring them into the worktree some other way (symlink,
   // copy) precisely because a plain `git worktree add` would leave them out.
   await writeFileDeep(repo, '.env', 'API_KEY=fake\n');

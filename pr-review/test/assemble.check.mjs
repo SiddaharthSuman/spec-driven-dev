@@ -26,7 +26,7 @@ const META = {
 
 test('buildFindings: the "typecheck/lint/tests pass" rubric row is cross-checked against real checks evidence, not the agent\'s own boolean', () => {
   // The agent says rubric[1] (index 1 = that row) is true, but real checks
-  // evidence disagrees — evidence must win.
+  // evidence disagrees: evidence must win.
   const checks = { typecheck: { errors: 1 }, lint: { errors: 0 }, tests: { failed: 0 } };
   const findings = buildFindings({ review: BASE_REVIEW, triage: null, checks, visual: null, meta: META });
   assert.equal(findings.rubric[1].pass, false);
@@ -90,4 +90,32 @@ test('buildFindings: facts pull sizeTier/reviewableLines/unit counts straight fr
     deepUnits: 1,
     skimmedUnits: 2,
   });
+});
+
+test('buildFindings: an unknown check row is never a pass and is listed as not verified', () => {
+  const checks = {
+    typecheck: { status: 'unknown', note: 'timed out after 10 min' },
+    lint: { status: 'pass', errors: 0 },
+    tests: { status: 'pass', failed: 0 },
+  };
+  const findings = buildFindings({ review: BASE_REVIEW, triage: null, checks, visual: null, meta: META });
+  assert.equal(findings.rubric[1].pass, false);
+  assert.ok(findings.notVerifiedExtra.some((l) => l.includes('Typecheck could not be verified')));
+});
+
+test('buildFindings: preexisting and skipped rows do not block, but preexisting is disclosed', () => {
+  const checks = {
+    typecheck: { status: 'preexisting', errors: 3, baseErrors: 3 },
+    lint: { status: 'skipped', note: 'no lintable files changed' },
+    tests: { status: 'pass', failed: 0 },
+  };
+  const findings = buildFindings({ review: BASE_REVIEW, triage: null, checks, visual: null, meta: META });
+  assert.equal(findings.rubric[1].pass, true);
+  assert.equal(findings.notVerifiedExtra.length, 2);
+});
+
+test('buildFindings: a failed row blocks even when counts are absent', () => {
+  const checks = { typecheck: { status: 'pass' }, lint: { status: 'fail', errors: 0 }, tests: { status: 'pass' } };
+  const findings = buildFindings({ review: BASE_REVIEW, triage: null, checks, visual: null, meta: META });
+  assert.equal(findings.rubric[1].pass, false);
 });

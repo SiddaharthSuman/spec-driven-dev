@@ -45,7 +45,7 @@ export function isNoise(entry, { whitespaceOnly = false } = {}) {
   return false;
 }
 
-// Groups changed files into review "units" — a coarse heuristic: the top
+// Groups changed files into review "units", a coarse heuristic: the top
 // two path segments (e.g. src/services/invoices.api.ts -> src/services),
 // falling back to the top segment for shallow paths.
 export function unitKey(path) {

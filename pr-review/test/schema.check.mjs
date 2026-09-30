@@ -51,7 +51,7 @@ test('validate: rubric must have exactly 5 entries', async () => {
 test('validate: Approve cannot coexist with a blocking finding', async () => {
   const findings = await loadFixtureFindings();
   // The fixture has a blocking finding (B1) and correctly says "Request
-  // changes" — forcing it to "Approve" without removing B1 must fail.
+  // changes": forcing it to "Approve" without removing B1 must fail.
   assert.equal(findings.findings.some((f) => f.severity === 'blocking'), true);
   findings.decision = 'Approve';
   const { ok, errors } = validate(findings);

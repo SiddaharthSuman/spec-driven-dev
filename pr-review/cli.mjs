@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Command dispatcher: node cli.mjs <command> --flag value ...
 //
-// Every command module owns its own console output and exit code — this
+// Every command module owns its own console output and exit code, this
 // file only resolves a command name to a function and calls it. Commands
 // meant to be captured with shell redirection (checks, diff, routes, sweep,
 // prepare) print pure JSON and nothing else to stdout; commands with an

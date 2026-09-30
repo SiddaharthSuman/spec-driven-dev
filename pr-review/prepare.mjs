@@ -1,4 +1,4 @@
-// `prepare` — run once by the orchestrator, before any pr-reviewer agent
+// `prepare`: run once by the orchestrator, before any pr-reviewer agent
 // launches. Resolves git refs, allocates ports, and emits one fully-formed
 // agent prompt per PR. See README.md's "prepare" section for the contract.
 
@@ -22,7 +22,7 @@ async function alreadyReviewedAt(outDir, headSha) {
     const meta = JSON.parse(await fs.readFile(path.join(outDir, 'meta.json'), 'utf8'));
     return meta.headSha === headSha;
   } catch {
-    return false; // no prior run recorded — never a reason to skip
+    return false; // no prior run recorded: never a reason to skip
   }
 }
 
@@ -34,7 +34,7 @@ async function ensureReviewsIgnored(repo) {
   try {
     current = await fs.readFile(excludePath, 'utf8');
   } catch {
-    // .git/info/exclude may not exist yet — that's fine, we create it below
+    // .git/info/exclude may not exist yet, that's fine, we create it below
   }
   if (!current.includes('.reviews/')) {
     await fs.appendFile(excludePath, `${current.endsWith('\n') || current === '' ? '' : '\n'}.reviews/\n`);

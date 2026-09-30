@@ -1,5 +1,5 @@
 // Builds a real 2-commit git repo (source edit + a touched lockfile) and
-// runs the real `triage` module against it — the same scenario validated
+// runs the real `triage` module against it, the same scenario validated
 // by hand against /tmp/fake-repo while building this package, now codified.
 
 import { test, before, after } from 'node:test';

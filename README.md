@@ -189,15 +189,16 @@ setup checklist, because nothing here requires it.
   take effect at the next session start or `/reload-plugins`.
 - A `--plugin-dir` copy silently shadows an installed plugin of the same name.
   If behaviour looks stale, check which copy is actually loaded.
-- If `pr-review/` needs npm packages, keep a `package-lock.json` at the plugin
-  root. Claude Code runs `npm ci --ignore-scripts` on install; Yarn and pnpm
-  lockfiles are skipped. Because scripts are ignored, Playwright's browser
-  download never happens automatically, which is why the one-time setup below
-  lists `npx playwright install chromium`.
+- `pr-review/` has its own `package.json` and `package-lock.json` (Playwright
+  and TypeScript). Do not assume Claude Code installs them for you: treat the
+  one-time setup in `pr-review/README.md` (`npm install` and `npx playwright
+  install chromium`, run inside `pr-review/`) as manual. Scripts never run
+  from a plugin, and the browser download is a separate step either way.
 - `sanitize/`, `stats/` and `system-one/` are plain Node with no dependencies.
   Run their tests with `node --test sanitize/sanitize.check.mjs
 stats/engineer-stats.check.mjs system-one/decide.check.mjs`. The `pr-review/`
-  tests run with `node --test pr-review/test/*.check.mjs`.
+  tests run with `npm test` inside `pr-review/` (set
+  `PR_REVIEW_CHROMIUM_PATH` if Chromium is not where Playwright expects).
 - Plugins run no install scripts, so the sanitizer can't copy itself into a
   project. Projects vendor it once through the bootstrap prompt below.
 - Keep `commands/engineer.md` lean (Anthropic's guidance is under about 500
@@ -326,6 +327,10 @@ On Claude Code v2.1.275+ one command does both:
 Choose project scope for a repo the team shares, user scope for personal
 use. If this repo is private, git credentials must work without a prompt
 (`gh auth login`, or an SSH key already in `known_hosts`).
+
+Prerequisites for the pipelines: Node 20 or newer, `git`, and the GitHub CLI
+(`gh`, signed in) for `/pr-review`, which fetches PR refs and metadata
+through it.
 
 #### Verify the install
 

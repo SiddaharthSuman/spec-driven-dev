@@ -14,7 +14,7 @@
     {
       "name": "spec-driven-dev",
       "source": "./",
-      "description": "Shared spec-driven development workflow — commands, agents, skills, hooks, and the PR review pipeline."
+      "description": "Shared spec-driven development workflow: commands, agents, skills, hooks, and the PR review pipeline."
     }
   ]
 }

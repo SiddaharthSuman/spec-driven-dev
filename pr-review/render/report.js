@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
         copyBtn.textContent = 'Copied';
       } catch {
         copyBtn.dataset.copied = 'false';
-        copyBtn.textContent = 'Copy failed — select the text below manually';
+        copyBtn.textContent = 'Copy failed: select the text below manually';
       }
       setTimeout(() => {
         copyBtn.textContent = original;

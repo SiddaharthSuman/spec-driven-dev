@@ -1,4 +1,4 @@
-// Hand-rolled findings.json validator — no external schema library
+// Hand-rolled findings.json validator: no external schema library
 // dependency, deliberately, to match this package's zero-runtime-dep
 // stance for its own plumbing (Playwright/TypeScript are the only real
 // dependencies, and both are already required for capture/routes).
@@ -61,7 +61,7 @@ export function validate(findings) {
     require(isString(f.summary), `finding ${f.id ?? '?'} needs a summary`);
   }
 
-  // Decision/finding-severity consistency — this is exactly the rule
+  // Decision/finding-severity consistency: this is exactly the rule
   // review.json is supposed to already follow; catching a violation here
   // is a real regression, not a style nit.
   const hasBlocking = (findings.findings ?? []).some((f) => f.severity === 'blocking');

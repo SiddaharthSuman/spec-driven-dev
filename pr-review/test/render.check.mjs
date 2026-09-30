@@ -2,7 +2,7 @@
 // pipeline test/smoke.mjs used to produce golden/report.{html,md} must still
 // produce that same output. A module change that alters the golden output
 // on this unrelated fixture PR is almost always a regression, not an
-// intended change — see README.md's "Testing" section.
+// intended change: see README.md's "Testing" section.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -28,7 +28,7 @@ const META = {
 // Strips the one line in report.html that legitimately changes every run
 // (the render timestamp), so the rest can be compared byte-for-byte.
 function stripGeneratedAt(html) {
-  return html.replace(/Generated [^·]+·/, 'Generated <normalized> ·');
+  return html.replace(/Generated .+? &middot;/, 'Generated <normalized> &middot;');
 }
 
 async function renderFixturePipeline() {

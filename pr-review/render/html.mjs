@@ -1,6 +1,6 @@
 // Renders report.html from the findings.json data model. By the time
 // findings reaches here, `findings.diffFiles` has already been enriched by
-// finish.mjs from [path, path, path] into [{path, diff}, ...] (up to 3) —
+// finish.mjs from [path, path, path] into [{path, diff}, ...] (up to 3),
 // this module only renders, it never fetches anything itself.
 //
 // `markdownText` is the already-rendered report.md content, embedded in a
@@ -54,7 +54,7 @@ function renderFindings(findings) {
       <div class="finding" data-severity="${escapeHtml(f.severity)}">
         <span class="finding-id">${escapeHtml(f.id)}</span>
         <strong>${escapeHtml(SEVERITY_LABEL[f.severity] ?? f.severity)}</strong>
-        — ${escapeHtml(f.summary)}
+       : ${escapeHtml(f.summary)}
         ${f.detail ? `<div class="muted">${escapeHtml(f.detail)}</div>` : ''}
         ${f.ref ? `<div class="muted finding-id">${escapeHtml(f.ref)}</div>` : ''}
       </div>`
@@ -81,12 +81,12 @@ function renderVisual(visual) {
   return scenarios
     .map((s) => {
       if (s.status === 'failed') {
-        return `<div class="panel"><strong>${escapeHtml(s.name)}</strong> — <span class="check-no">failed</span>: ${escapeHtml(s.error ?? '')}</div>`;
+        return `<div class="panel"><strong>${escapeHtml(s.name)}</strong>: <span class="check-no">failed</span>: ${escapeHtml(s.error ?? '')}</div>`;
       }
       return `
         <div class="panel">
           <strong>${escapeHtml(s.name)}</strong>
-          — ${escapeHtml(VISUAL_STATUS_LABEL[s.status] ?? s.status)}
+         : ${escapeHtml(VISUAL_STATUS_LABEL[s.status] ?? s.status)}
           ${s.note ? `<span class="muted">(${escapeHtml(s.note)})</span>` : ''}
           <div class="visual-grid">
             <figure><img src="${escapeHtml(s.basePath)}" alt="Base: ${escapeHtml(s.name)}" loading="lazy"><figcaption class="muted">Base</figcaption></figure>
@@ -108,7 +108,7 @@ export async function renderHtml(findings, markdownText) {
     fs.readFile(path.join(HERE, 'report.js'), 'utf8'),
   ]);
 
-  const title = `PR #${findings.meta.pr} review — ${findings.meta.repo}`;
+  const title = `PR #${findings.meta.pr} review: ${findings.meta.repo}`;
 
   return `<!doctype html>
 <html lang="en">
@@ -120,9 +120,9 @@ export async function renderHtml(findings, markdownText) {
 </head>
 <body>
   <div class="header">
-    <h1 lang="en">PR #${findings.meta.pr} — ${escapeHtml(findings.meta.repo)}</h1>
+    <h1 lang="en">PR #${findings.meta.pr}: ${escapeHtml(findings.meta.repo)}</h1>
     <span class="badge ${decisionClass(findings.decision)}">${escapeHtml(DECISION_LABEL[findings.decision] ?? findings.decision)}</span>
-    <span class="muted">confidence ${findings.confidence}/5 · risk ${findings.riskLevel}/3 · tier ${escapeHtml(findings.facts.sizeTier ?? '?')}</span>
+    <span class="muted">confidence ${findings.confidence}/5 &middot; risk ${findings.riskLevel}/3 &middot; tier ${escapeHtml(findings.facts.sizeTier ?? '?')}</span>
     <button id="theme-toggle" class="copy-btn" type="button">Toggle theme</button>
   </div>
 
@@ -139,7 +139,7 @@ export async function renderHtml(findings, markdownText) {
 
   ${findings.diffFiles?.length ? `<h2>Key diffs</h2>${renderDiffFiles(findings.diffFiles)}` : ''}
 
-  <h2>Visual coverage${findings.coverage.visualPct !== null ? ` — ${findings.coverage.visualPct}% changed/new` : ''}</h2>
+  <h2>Visual coverage${findings.coverage.visualPct !== null ? `: ${findings.coverage.visualPct}% changed/new` : ''}</h2>
   ${renderVisual(findings.visual)}
   ${findings.visual?.tryIt?.length ? `<h3 class="muted">Try it yourself</h3>${renderList(findings.visual.tryIt)}` : ''}
   ${findings.visual?.knownLimits?.length ? `<h3 class="muted">Known limits</h3>${renderList(findings.visual.knownLimits)}` : ''}
@@ -154,8 +154,8 @@ export async function renderHtml(findings, markdownText) {
   <pre id="markdown-source" style="position:absolute;left:-9999px;top:-9999px;" aria-hidden="true">${escapeHtml(markdownText)}</pre>
 
   <footer>
-    Generated ${formatDate(findings.meta.generatedAt)} · base <code>${shortSha(findings.meta.baseSha)}</code> ·
-    head <code>${shortSha(findings.meta.headSha)}</code>${findings.meta.mergeSha ? ` · merge <code>${shortSha(findings.meta.mergeSha)}</code>` : ''} ·
+    Generated ${formatDate(findings.meta.generatedAt)} &middot; base <code>${shortSha(findings.meta.baseSha)}</code> &middot;
+    head <code>${shortSha(findings.meta.headSha)}</code>${findings.meta.mergeSha ? ` &middot; merge <code>${shortSha(findings.meta.mergeSha)}</code>` : ''} &middot;
     ${findings.facts.reviewableLines ?? '?'} reviewable lines across ${findings.facts.changedFiles ?? '?'} files
   </footer>
 

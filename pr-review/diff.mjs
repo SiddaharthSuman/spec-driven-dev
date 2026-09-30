@@ -1,4 +1,4 @@
-// `diff` — a compact unified diff for one triage unit, reviewable files
+// `diff`: a compact unified diff for one triage unit, reviewable files
 // only. See README.md's "diff" section.
 
 import path from 'node:path';
@@ -32,7 +32,7 @@ export async function diff(args) {
   if (max) {
     const lines = raw.split('\n');
     if (lines.length > max) {
-      text = `${lines.slice(0, max).join('\n')}\n… (truncated at ${max} lines; ${lines.length - max} more)`;
+      text = `${lines.slice(0, max).join('\n')}\n... (truncated at ${max} lines; ${lines.length - max} more)`;
       truncated = true;
     }
   }

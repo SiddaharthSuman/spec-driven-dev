@@ -32,6 +32,6 @@
     "flow": null
   },
   "notVerifiedExtra": [
-    "Whether the backend actually rejects an invalid date range server-side was not checked — this PR only covers the client-side filter UI."
+    "Whether the backend actually rejects an invalid date range server-side was not checked. This PR only covers the client-side filter UI."
   ]
 }

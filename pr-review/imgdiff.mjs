@@ -1,5 +1,5 @@
 // Pixel-diff logic, done inside a Chromium <canvas> via an already-open
-// Playwright page — deliberately no native image-diff library dependency.
+// Playwright page: deliberately no native image-diff library dependency.
 // Returns a normalized 0..1 mean-channel-difference score: 0 = identical,
 // larger = more different. Used by capture.mjs both to measure a
 // per-scenario noise floor (base shot vs. base shot) and to compare base

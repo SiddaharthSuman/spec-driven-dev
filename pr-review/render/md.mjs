@@ -1,5 +1,5 @@
 // Renders the paste-ready markdown PR comment from the same findings.json
-// data model report.html renders from — so the two can never disagree.
+// data model report.html renders from, so the two can never disagree.
 
 import { SEVERITY_LABEL, DECISION_LABEL, LENS_VERDICT_LABEL, VISUAL_STATUS_LABEL, shortSha } from './inline.mjs';
 
@@ -9,7 +9,7 @@ function renderRubric(rubric) {
 
 function renderLenses(lenses) {
   return Object.entries(lenses)
-    .map(([name, [verdict, sentence]]) => `- **${name}**: ${LENS_VERDICT_LABEL[verdict] ?? verdict} — ${sentence}`)
+    .map(([name, [verdict, sentence]]) => `- **${name}**: ${LENS_VERDICT_LABEL[verdict] ?? verdict}: ${sentence}`)
     .join('\n');
 }
 
@@ -37,7 +37,7 @@ export function renderMarkdown(findings) {
   const parts = [];
 
   parts.push(
-    `## PR #${findings.meta.pr} review — ${DECISION_LABEL[findings.decision] ?? findings.decision} (confidence ${findings.confidence}/5, risk ${findings.riskLevel}/3)`
+    `## PR #${findings.meta.pr} review: ${DECISION_LABEL[findings.decision] ?? findings.decision} (confidence ${findings.confidence}/5, risk ${findings.riskLevel}/3)`
   );
   parts.push('');
   parts.push(findings.lede);
@@ -56,7 +56,7 @@ export function renderMarkdown(findings) {
   parts.push('');
 
   parts.push(
-    `### Visual coverage${findings.coverage.visualPct !== null ? ` — ${findings.coverage.visualPct}% changed/new` : ''}`
+    `### Visual coverage${findings.coverage.visualPct !== null ? `: ${findings.coverage.visualPct}% changed/new` : ''}`
   );
   parts.push(renderVisual(findings.visual));
   parts.push('');
@@ -73,9 +73,9 @@ export function renderMarkdown(findings) {
   parts.push('');
   parts.push('---');
   parts.push(
-    `_base \`${shortSha(findings.meta.baseSha)}\` · head \`${shortSha(findings.meta.headSha)}\`${
-      findings.meta.mergeSha ? ` · merge \`${shortSha(findings.meta.mergeSha)}\`` : ''
-    } · not posted automatically — paste this yourself._`
+    `_base \`${shortSha(findings.meta.baseSha)}\` | head \`${shortSha(findings.meta.headSha)}\`${
+      findings.meta.mergeSha ? ` | merge \`${shortSha(findings.meta.mergeSha)}\`` : ''
+    } | not posted automatically: paste this yourself._`
   );
 
   return parts.join('\n');

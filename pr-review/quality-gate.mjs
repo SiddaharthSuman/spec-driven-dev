@@ -1,7 +1,7 @@
-// `quality-gate` — headless-browser acceptance checks on a rendered
+// `quality-gate`: headless-browser acceptance checks on a rendered
 // report.html, run by `finish` before a report counts as "delivered". See
 // README.md's "Quality gate" section for the exact rule list. A hard gate,
-// not a lint suggestion — never relax a check here to make a report pass;
+// not a lint suggestion, never relax a check here to make a report pass;
 // fix the template in render/ instead.
 
 import path from 'node:path';
@@ -31,7 +31,7 @@ function contrastRatio(hexA, hexB) {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-// The pairs report.css actually renders text against — kept in sync with
+// The pairs report.css actually renders text against, kept in sync with
 // the --variable names in render/report.css by hand, since this gate is
 // what catches a drift between the two.
 const CONTRAST_PAIRS = [
@@ -131,7 +131,7 @@ async function checkCopyButton(page) {
   await page.click('#copy-md-btn');
   try {
     // The click handler awaits an async clipboard write before setting
-    // this attribute — waitForFunction (not an immediate read) is required
+    // this attribute: waitForFunction (not an immediate read) is required
     // so this check isn't racing that await.
     await page.waitForFunction(
       () => document.getElementById('copy-md-btn').dataset.copied === 'true',
@@ -148,7 +148,7 @@ export async function runGate(htmlPath) {
   try {
     playwright = await import('playwright');
   } catch {
-    return { ok: false, failures: ['playwright is not installed — cannot run the quality gate'] };
+    return { ok: false, failures: ['playwright is not installed: cannot run the quality gate'] };
   }
 
   const browser = await launchChromium(playwright);

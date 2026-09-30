@@ -56,7 +56,13 @@ with `--ref $BASE_SHA --dir $WORK/base`. Start
 `$CLI checks --head $WORK/head --base $WORK/base --files <changed list from the summary> > $WORK/checks.json`
 in the background and keep reading while it runs. It type-checks, lints the
 changed files against base, and runs the full unit suite, returning compact
-rows. A failing row is usually a blocking finding.
+rows. It detects the toolchain itself (including `tsc -b` for solution-style
+tsconfigs), but if `AGENTS.md` lists the project's own typecheck, lint or
+test commands, pass them with `--typecheck-cmd`, `--lint-cmd` and
+`--test-cmd`. Each row has a status: `fail` is usually a blocking finding,
+`preexisting` means base fails the same way (not this PR's fault),
+`unknown` means it could not run (say so, never call it a pass), and
+`skipped` means nothing to run.
 
 **3. Read.**
 `$CLI diff --repo $MAIN_REPO --from $BASE_SHA --to $TO --unit <deep unit>`
@@ -77,8 +83,12 @@ Otherwise:
 1. `$CLI routes --repo $WORK/head --files <changed files>` gives the
    affected routes. If `global` comes back non-empty, sweep only the six
    most important routes and say so.
-2. Write them as `[{"path":"/x"}]` to `$WORK/routes.json`, then
+2. Save the `routes` output to `$WORK/routes.json` (you may edit its
+   `paths`, or write a plain list such as `["/x","/y"]`), then
    `$CLI sweep --routes $WORK/routes.json --max 12 > $WORK/sweep.json`.
+   Routes with a parameter (`/posts/:id`) come back under `skipped` in the
+   sweep output. Add a scenario with a concrete URL for one if it matters,
+   taken from the project's fixtures, and say which were skipped.
 3. Write `$WORK/plan.json`: the sweep scenarios plus interaction scenarios
    for what the diff actually changed (open a dropdown, modal, or tab;
    submit an invalid form). Format is in `$TOOL/README.md`. Use
@@ -90,7 +100,9 @@ Otherwise:
    specs, its `AGENTS.md`, or its `playwright-live-verification` skill if it
    has one, and don't guess. If the project's dev command isn't obvious, read
    it from `AGENTS.md` and set `devCommand`.
-4. Start `$CLI serve --dir $WORK/base --port $PORT_BASE` and the same for
+4. Start `$CLI serve --dir $WORK/base --port $PORT_BASE` (add
+   `--cmd "<dev command> {port}"` if the project does not use plain Vite)
+   and the same for
    `$WORK/head --port $PORT_HEAD` in the background; poll
    `curl -s -o /dev/null -w '%{http_code}' <url>` for up to 60s.
 5. `$CLI capture --plan $WORK/plan.json --base http://127.0.0.1:$PORT_BASE --head http://127.0.0.1:$PORT_HEAD --out $OUT/shots --base-caption "Base \`<sha8>\`: <what it shows>." --head-caption "Merge result \`<sha8>\`: <what it shows>."`

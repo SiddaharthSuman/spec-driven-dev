@@ -1,4 +1,4 @@
-// `checkout` / `dispose` / `refs-delete` — throwaway git worktrees for a
+// `checkout` / `dispose` / `refs-delete`, throwaway git worktrees for a
 // PR's base and target commits, and the cleanup that reverses them. See
 // README.md's "checkout" / "dispose" / "refs-delete" sections.
 
@@ -12,13 +12,13 @@ async function linkNodeModules(repo, dir) {
   try {
     await fs.access(source);
   } catch {
-    return false; // nothing to link — repo has no installed deps
+    return false; // nothing to link: repo has no installed deps
   }
   try {
     await fs.access(dest);
     return false; // already present (shouldn't happen on a fresh worktree)
   } catch {
-    // expected — proceed to link
+    // expected: proceed to link
   }
   await fs.symlink(source, dest, 'dir');
   return true;
@@ -32,7 +32,7 @@ async function copyEnvFiles(repo, dir) {
       await fs.copyFile(source, path.join(dir, name));
       copied.push(name);
     } catch {
-      // fine — not every repo/env has these
+      // fine: not every repo/env has these
     }
   }
   return copied;
@@ -72,7 +72,7 @@ export async function dispose(args) {
       await fs.unlink(nodeModulesPath);
     }
   } catch {
-    // no node_modules to unlink — fine
+    // no node_modules to unlink, fine
   }
   await worktreeRemove(repo, absDir);
   console.log(JSON.stringify({ ok: true, dir: absDir }));

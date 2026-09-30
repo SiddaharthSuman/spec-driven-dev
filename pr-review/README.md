@@ -105,18 +105,34 @@ removal can never chase the symlink into the real `node_modules` — then
 Deletes the PR refs `prepare` fetched. Always run during cleanup, even on
 failure.
 
-### `checks --head <dir> --base <dir> --files <comma-list> > <path>`
+### `checks --head <dir> [--base <dir>] [--files <comma-list>] [--typecheck-cmd <cmd>] [--lint-cmd <cmd>] [--test-cmd <cmd>] [--skip <list>] [--timeout-min <n>] > <path>`
 
-Runs, in the background, against the changed-file list only (never the
-whole repo):
+Runs the project's real typecheck, lint and tests and reduces each to one
+compact row. The agent consuming this never sees raw tool output. Each
+check uses the command you pass (usually copied from the project's
+`AGENTS.md`) or is detected from the checkout:
 
-- **Typecheck** — never a raw `tsc -b` call; wrapped so it can't hang or
-  blow up the agent's context with raw compiler output.
-- **Lint** — ESLint against the changed files only, diffed against base.
-- **Tests** — the full test suite.
+- **Typecheck** - `tsc -b` when `tsconfig.json` uses project references (the
+  solution-style config Vite templates ship, where plain `tsc --noEmit`
+  checks nothing and exits 0), otherwise `tsc --noEmit`.
+- **Lint** - ESLint and/or Biome, whichever has a config in the checkout, on
+  the changed files only.
+- **Tests** - Vitest or Jest, else the `package.json` `test` script.
 
-Each parsed down to a compact `{errors, sample}` row — the agent consuming
-this never sees raw tool output.
+Every row carries a `status`:
+
+| status        | meaning                                                                 |
+| ------------- | ----------------------------------------------------------------------- |
+| `pass`        | the command exited 0                                                    |
+| `fail`        | problems that the base checkout does not have                           |
+| `preexisting` | problems, but the base has the same or more (needs `--base`)            |
+| `unknown`     | could not run, timed out, or the output could not be trusted            |
+| `skipped`     | nothing to run (no tsconfig, no lintable files, no test script)         |
+
+`unknown` is never a pass: `finish` fails the "typecheck, lint and tests"
+row and lists it under "Not independently verified". `preexisting` rows do
+not block but are disclosed. Each command has a timeout (default 10 min).
+Custom commands are judged by exit code, with a few output lines as a sample.
 
 ### `diff --repo <path> --from <sha> --to <sha> --unit <unit> [--max <n>]`
 
@@ -128,21 +144,36 @@ for a "skimmed" unit rather than a "deep" one.
 
 Statically walks the TS/TSX import graph from the changed files (via the
 TypeScript compiler API) to find every route path that could be affected.
-If a changed file is import-reachable from effectively everywhere (an app
-shell, a global stylesheet, `main.tsx`) it's flagged as a **global** change
-instead of an enumerated route list.
+
+- The walk **stops at route files**. A route file is a leaf: whatever imports
+  it (the router config, or TanStack Router's generated `routeTree.gen.ts`)
+  only wires it up. Walking on would reach `main.tsx` from every page and
+  flag every change as global.
+- Route files are files under a `pages/` or `routes/` directory, except
+  `-private` helpers, tests, stories and generated trees.
+- File names are understood in TanStack Router style (`posts.$id.tsx`,
+  `_auth.tsx`, `index`, `route`, `.lazy`, trailing `_`) and in Next or Remix
+  style (`[id]`, `[...slug]`, `(group)`).
+- A changed **layout** (`route.tsx`, `_layout.tsx`, `_app`, `_auth`, or a flat
+  `posts.tsx` with `posts.*.tsx` children) affects its whole subtree.
+- A changed `__root` file, or a shared file that reaches `main`, `index` or
+  `App` without passing through a route, is flagged **global**.
 
 ### `sweep --routes <path> --max <n> > <path>`
 
-Given the `routes` output, produces up to `<n>` sweep scenarios (page-load
-screenshots, no interaction) — the baseline coverage layer that
+Given the `routes` output (or a plain list of paths), produces up to `<n>`
+sweep scenarios (page-load screenshots, no interaction). Routes with a
+parameter or splat are not loaded with a literal `:id`; they are listed under
+`skipped` so a concrete URL can be added by hand — the baseline coverage layer that
 interaction-specific scenarios (open a modal, submit a form) get added to
 before capture.
 
-### `serve --dir <path> --port <n>`
+### `serve --dir <path> --port <n> [--cmd <command>]`
 
-Boots a throwaway Vite dev server against a checked-out worktree on the
-given port. The caller polls
+Boots a throwaway dev server against a checked-out worktree on the given
+port. With `--cmd`, the project's own command runs (`{port}` is replaced, or
+`--port <n>` is appended). Without it, the checkout's own `vite` binary is
+used, and the command fails with a clear message when Vite is not installed. The caller polls
 `curl -s -o /dev/null -w '%{http_code}' <url>` (up to 60s) until it's ready,
 then stops it after capture.
 
@@ -336,7 +367,7 @@ almost always a regression, not an intended change.
 | `triage.mjs`                                                                                     | File classification, size tiering, risk-ranked unit selection |
 | `diff.mjs`                                                                                       | Compact per-unit diffs                                        |
 | `checkout.mjs`                                                                                   | Worktree checkout / dispose / ref cleanup                     |
-| `checks.mjs`                                                                                     | tsc/eslint/test runners and their output parsers              |
+| `checks.mjs`                                                                                     | typecheck/lint/test detection, runners and output parsers     |
 | `affected-routes.mjs`                                                                            | Import-graph walk → affected routes; also implements `sweep`  |
 | `servers.mjs`                                                                                    | Throwaway dev server boot/stop                                |
 | `capture.mjs` / `imgdiff.mjs`                                                                    | Screenshot capture and pixel-diff/noise-floor logic           |

@@ -1,5 +1,5 @@
 // Shared helper for tests that need a real, throwaway git repo rather than
-// a mocked one — triage/diff/checkout all shell out to real `git`, so a
+// a mocked one: triage/diff/checkout all shell out to real `git`, so a
 // fixture repo on disk is what actually exercises them.
 
 import fs from 'node:fs/promises';

@@ -23,6 +23,6 @@
     "open http://localhost:5173/invoices"
   ],
   "knownLimits": [
-    "API responses are mocked from src/services/*.api.ts shapes, not live data."
+    "API responses are mocked from the project's own API client shapes, not live data."
   ]
 }

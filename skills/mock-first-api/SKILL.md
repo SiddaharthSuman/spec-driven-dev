@@ -25,9 +25,10 @@ endpoint lands.
 
 ## Core rule: the mock lives inside the real call site, not next to it
 
-Write the actual `<feature>.api.ts` service module the UI will call —
-`fetchX()`, `mutateX()`, whatever the feature needs — following the existing
-naming convention (`03-code-standards.md`). The UI imports and calls this
+Write the actual service module the UI will call (`fetchX()`, `mutateX()`,
+whatever the feature needs) in the project's own API layer, following its
+existing file naming and location conventions (`03-code-standards.md`, or
+wherever the project documents them). The UI imports and calls this
 file exactly as it will once the real API exists.
 
 Internally, the function body just returns hardcoded mock data (an optional
@@ -45,8 +46,8 @@ endpoint lands, so the eventual swap needs no call-site changes elsewhere in
 the app:
 
 ```ts
-// TODO(API): replace mock impl with tokenizedApi call once
-// API_ENDPOINTS.<name> exists — do not change the function signature
+// TODO(API): replace mock impl with the project's real API client call
+// once the <name> endpoint exists. Do not change the function signature
 // below, only the body.
 ```
 
@@ -59,21 +60,22 @@ arrives)." Don't let an invented shape read as a settled contract.
 
 ## When the real API arrives: amend, don't rewrite
 
-Per Rule 9 (`04-ai-workflow-rules.md`), a spec that's already Completed with
+Per the completed-specs-are-immutable rule in `04-ai-workflow-rules.md`, a spec that's already Completed with
 a mock stays immutable. Integrating the real API is a new amendment spec
 (`docs/specs/_amendment-template.md`) against the original — typically small:
-swap the mock body for the real `tokenizedApi` call, reconcile any drift
+swap the mock body for the real API client call, reconcile any drift
 between the mock shape and the real contract, and remove the TODO(API)
 comment.
 
 ## Quick checklist
 
-- [ ] Mock lives inside the real `.api.ts` module the UI actually calls — no
+- [ ] Mock lives inside the real API-layer module the UI actually calls — no
       parallel dead file.
 - [ ] Function signatures match what the real endpoint is expected to have.
 - [ ] TODO(API) swap-point comment present, naming the exact endpoint to wire
       up later.
 - [ ] Mock data shape flagged as unconfirmed if not agreed with a backend
       team.
-- [ ] No store using `persist` middleware for mock-backed state — consistent
-      with `02-architecture.md`'s existing pattern.
+- [ ] Mock-backed state is not persisted (for example to local storage), so
+      stale mock data can't outlive the swap, unless `02-architecture.md`
+      says otherwise.

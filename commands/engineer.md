@@ -16,11 +16,11 @@ point with worker parallelism added at the implement stage.
 Reference files ship with this plugin, one level below this file. Read each
 only at the step that names it:
 
-| File                                                  | Read at                    | Holds                                                             |
-| ----------------------------------------------------- | -------------------------- | ----------------------------------------------------------------- |
-| `${CLAUDE_PLUGIN_ROOT}/engineer/worker-prompt.md`     | step 4                     | the verbatim block every worker prompt must contain               |
-| `${CLAUDE_PLUGIN_ROOT}/engineer/budgets-and-stats.md` | steps 2 and 8              | budget tables, overrun and model-ceiling rules, statistics events |
-| `${CLAUDE_PLUGIN_ROOT}/engineer/text-hygiene.md`      | before any code is written | plain-ASCII rules and the five enforcement layers                 |
+| File | Read at | Holds |
+| ---- | ------- | ----- |
+| `${CLAUDE_PLUGIN_ROOT}/engineer/worker-prompt.md` | step 4 | the verbatim block every worker prompt must contain |
+| `${CLAUDE_PLUGIN_ROOT}/engineer/budgets-and-stats.md` | steps 2 and 8 | budget tables, overrun and model-ceiling rules, statistics events |
+| `${CLAUDE_PLUGIN_ROOT}/engineer/text-hygiene.md` | before any code is written | plain-ASCII rules and the five enforcement layers |
 
 Two helper scripts, plain Node with no dependencies:
 `node ${CLAUDE_PLUGIN_ROOT}/stats/engineer-stats.mjs` (run statistics and

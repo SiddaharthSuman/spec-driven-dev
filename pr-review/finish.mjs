@@ -1,4 +1,4 @@
-// `finish` — the only command that writes report.html / report.md. Reads
+// `finish`: the only command that writes report.html / report.md. Reads
 // the agent's review.json plus the triage/checks/visual evidence,
 // mechanically assembles findings.json, validates it, renders both report
 // formats, and runs the quality gate against the rendered HTML. See

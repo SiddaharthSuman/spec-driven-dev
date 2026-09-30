@@ -29,7 +29,7 @@ export async function fetchPr(repo, pr) {
     { cwd: repo }
   );
   // The merge ref only exists while GitHub considers the PR cleanly
-  // mergeable — a real conflict means this fetch fails, which is expected,
+  // mergeable: a real conflict means this fetch fails, which is expected,
   // not an error to surface.
   const mergeResult = await run(
     'git',
@@ -63,7 +63,7 @@ export async function worktreeAdd(repo, dir, ref) {
 export async function worktreeRemove(repo, dir) {
   const result = await run('git', ['worktree', 'remove', '--force', dir], { cwd: repo });
   if (!result.ok) {
-    // Directory may already be gone (e.g. an earlier interrupted cleanup) —
+    // Directory may already be gone (e.g. an earlier interrupted cleanup),
     // prune below reconciles git's own bookkeeping either way.
   }
   await run('git', ['worktree', 'prune'], { cwd: repo });

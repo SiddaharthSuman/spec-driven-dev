@@ -1,4 +1,4 @@
-/* Report stylesheet. Self-contained — no external fonts or network
+/* Report stylesheet. Self-contained: no external fonts or network
    resources, since quality-gate.mjs loads this headless and checks it in
    both light and dark theme. Keep every color pair here WCAG-contrast
    checked by quality-gate before changing one. */
@@ -134,12 +134,12 @@ th, td {
 }
 
 .check-yes::before {
-  content: '✓ ';
+  content: '\\2713 ';
   color: var(--pass);
 }
 
 .check-no::before {
-  content: '✗ ';
+  content: '\\2717 ';
   color: var(--blocking);
 }
 

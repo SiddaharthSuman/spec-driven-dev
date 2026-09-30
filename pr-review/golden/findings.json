@@ -6,7 +6,7 @@
     "mergeSha": null,
     "baseSha": "1111111111111111111111111111111111111111",
     "baseBranch": "main",
-    "generatedAt": "2026-09-28T05:54:58.736Z"
+    "generatedAt": "2026-09-30T17:21:56.159Z"
   },
   "decision": "Request changes",
   "confidence": 4,
@@ -39,8 +39,14 @@
       "fail",
       "The date-range validator does not check that end >= start."
     ],
-    "security": ["pass", "No new auth or data-access surface introduced."],
-    "simplicity": ["pass", "Single-purpose diff, no unrelated refactors."],
+    "security": [
+      "pass",
+      "No new auth or data-access surface introduced."
+    ],
+    "simplicity": [
+      "pass",
+      "Single-purpose diff, no unrelated refactors."
+    ],
     "accessibility": [
       "note",
       "New filter inputs have labels but no aria-describedby for the validation error."
@@ -71,7 +77,7 @@
     "path": "docs/specs/012-invoice-filtering.md"
   },
   "notVerifiedExtra": [
-    "Whether the backend actually rejects an invalid date range server-side was not checked — this PR only covers the client-side filter UI."
+    "Whether the backend actually rejects an invalid date range server-side was not checked. This PR only covers the client-side filter UI."
   ],
   "facts": {
     "sizeTier": "S",
@@ -86,6 +92,10 @@
     "base": "/tmp/pr-review-fixture/base",
     "filesChecked": 2,
     "typecheck": {
+      "tool": "tsc -b",
+      "command": "tsc -b --pretty false",
+      "exitCode": 0,
+      "status": "pass",
       "errors": 0,
       "sample": []
     },
@@ -100,9 +110,17 @@
           "message": "Clear button has no accessible label",
           "severity": "warning"
         }
-      ]
+      ],
+      "tool": "eslint",
+      "command": "eslint --format json src/features/invoices/FilterPanel.tsx",
+      "exitCode": 0,
+      "status": "pass"
     },
     "tests": {
+      "tool": "vitest",
+      "command": "vitest run --reporter=json",
+      "exitCode": 0,
+      "status": "pass",
       "passed": 42,
       "failed": 0,
       "sample": []
@@ -138,7 +156,7 @@
       "open http://localhost:5173/invoices"
     ],
     "knownLimits": [
-      "API responses are mocked from src/services/*.api.ts shapes, not live data."
+      "API responses are mocked from the project's own API client shapes, not live data."
     ]
   },
   "diffFiles": [

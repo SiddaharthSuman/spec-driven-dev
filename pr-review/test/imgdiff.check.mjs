@@ -1,4 +1,4 @@
-// compareImages runs inside a real Chromium page (see imgdiff.mjs) — this
+// compareImages runs inside a real Chromium page (see imgdiff.mjs), this
 // needs Playwright + a launchable browser, so the whole file no-ops with a
 // clear skip reason when neither is available, rather than failing the
 // whole suite in an environment that hasn't run `npx playwright install`.
@@ -13,7 +13,7 @@ import { launchChromium } from '../lib/browser.mjs';
 
 let playwright;
 try {
-  // Same import shape imgdiff.mjs's caller (capture.mjs) uses — playwright
+  // Same import shape imgdiff.mjs's caller (capture.mjs) uses, playwright
   // exposes .chromium directly off the module object, no .default needed.
   playwright = await import('playwright');
 } catch {
@@ -22,7 +22,7 @@ try {
 
 const skip = !playwright ? 'playwright is not installed' : false;
 
-// This package has no PNG-encoding dependency of its own (deliberately —
+// This package has no PNG-encoding dependency of its own (deliberately,
 // see imgdiff.mjs's header comment about avoiding an image-diff library),
 // so tiny solid-color fixture PNGs are drawn with the same Chromium canvas
 // imgdiff.mjs uses at runtime, via a throwaway page.
