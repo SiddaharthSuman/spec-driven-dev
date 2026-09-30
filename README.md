@@ -40,7 +40,15 @@ loop — same four stages, one entry point instead of running each by hand. It
 adds worker parallelism, a live file tree, time budgets set from model and
 effort, and a measured statistics record for every run.
 `/pr-review` is a separate, parallel pipeline that never touches this loop —
-it writes to `.reviews/` in the project repo on its own.
+it writes to `.reviews/` in the project repo on its own, and never posts to
+GitHub. Its `checks` step runs the project's own typecheck, lint and tests
+(detecting `tsc -b` for solution-style tsconfigs, ESLint, Biome, Vitest or
+Jest, or using commands the project lists in `AGENTS.md`). A check that can't
+run or can't be trusted is reported as `unknown` and never counts as a pass;
+failures the base branch already has are labelled `preexisting`. Affected
+routes are found from the import graph, understand TanStack Router and Next
+style route files, and stop at route files so one page change doesn't read as
+a global change. See `pr-review/README.md`.
 
 ---
 
@@ -134,7 +142,7 @@ pre-commit hook, and the full gate. The details live in
 | `sanitize/` — `sanitize.mjs` and its tests                                                                                                            | `scripts/sanitize.mjs` — a vendored copy of the file to its left                           |
 | `stats/` — `engineer-stats.mjs` (run statistics and budgets) and its tests                                                                            | `.sanitizeignore` (optional exceptions)                                                    |
 | `pr-review/` — `cli.mjs` + ~15 modules, fixtures, golden files, tests                                                                                 |                                                                                            |
-| `system-one/` — `decide.mjs` and its tests, the optional Laya/Jev decision helper, never required                                                     |                                                                                            |
+| `system-one/` — `decide.mjs` and its tests, the optional Laya/Jev decision helper, never required                                                     | `CONTRIBUTE.md` — the developer guide for that project (how to build a feature there)      |
 
 ---
 
@@ -148,6 +156,15 @@ pre-commit hook, and the full gate. The details live in
 | `i-have-adhd` | `i-have-adhd`             | `github:ayghri/i-have-adhd`      |
 
 Enabling `spec-driven-dev` enables all four automatically.
+
+**Cost note.** `ponytail` and `i-have-adhd` are instruction sets that load into
+every session, and `spec-implement` and `hotfix` explicitly apply
+`i-have-adhd`'s output rules to progress narration. They are a deliberate
+choice here, but they are the same class of add-on the token section below
+recommends measuring before keeping. Check their share in `/usage`. If you drop
+one, remove it from `plugin.json`, the `marketplace.json` allowlist and the
+bootstrap settings below, and take the `i-have-adhd` references out of those two
+commands in the same change.
 
 **Maintainers:** `ponytail` and `i-have-adhd` live in other marketplaces, so
 both must be listed in `allowCrossMarketplaceDependenciesOn` in this repo's
@@ -199,6 +216,10 @@ setup checklist, because nothing here requires it.
 stats/engineer-stats.check.mjs system-one/decide.check.mjs`. The `pr-review/`
   tests run with `npm test` inside `pr-review/` (set
   `PR_REVIEW_CHROMIUM_PATH` if Chromium is not where Playwright expects).
+- This repo follows its own text rules. Check code files with
+  `node sanitize/sanitize.mjs --check $(git ls-files '*.mjs' '*.js' '*.sh' '*.json' '*.css' | grep -v package-lock | grep -v golden)`.
+  `.sanitizeignore` lists the one intentional exception (the markdown report
+  renderer, which emits bold markers on purpose).
 - Plugins run no install scripts, so the sanitizer can't copy itself into a
   project. Projects vendor it once through the bootstrap prompt below.
 - Keep `commands/engineer.md` lean (Anthropic's guidance is under about 500
@@ -270,9 +291,10 @@ Keep RTK only if `/usage` shows a real drop in the Bash-output share after two
 or three features. If a verifier or worker reports output that looks
 truncated, rerun that command with `rtk proxy`.
 
-**Not recommended**, with reasons: third-party "short reply" skills and
-plugins (they add input tokens to every session and fight the full evidence a
-verifier must give), Headroom-style compression proxies (unverified here, and
+**Not recommended** for adding on top, with reasons: more third-party "short
+reply" skills and plugins (they add input tokens to every session and fight the
+full evidence a verifier must give; see the cost note under Dependencies for the
+two this plugin already uses), Headroom-style compression proxies (unverified here, and
 they can drop the exact line a verifier needs), semantic-search indexes and
 "second brain" indexes (they duplicate `docs/context/`), and agent teams (about
 7 times the tokens, where `/engineer` waves are already the cheaper design).
@@ -631,6 +653,22 @@ case."
       hooks folder doesn't exist in new git worktrees, so the pre-commit
       hook won't fire there. Don't try to work around it without asking me.
 
+14. CONTRIBUTE.md at the repo root: the developer guide. Write it from the
+    docs you just created and my stack answers, not from memory. It covers:
+    prerequisites and first-time setup, the run/build/test commands, how a
+    feature is built here (the /spec-new to /spec-archive loop, /engineer,
+    /hotfix, /learn, amendments), the commit and code text rules, what the
+    Husky hooks run, testing conventions, the PR description (paste the manual
+    verification script), and where things live. Link to the context docs
+    instead of copying rules into it, and don't invent branch naming or review
+    policy I haven't stated. Show me the draft before writing it.
+
+15. If the typecheck command I named is tsc on a tsconfig with "references"
+    (a solution-style config, as Vite templates have), make it `tsc -b`.
+    Plain `tsc --noEmit` checks nothing there and always passes. Also tell me
+    to exclude the vendored scripts/sanitize.mjs from the formatter and from
+    unused-code checks, since reformatting it makes every re-copy noisy.
+
 Do not pre-create docs/specs/<developer>/, docs/specs/archive/, or
 docs/verification-log/ — those come into existence the first time /spec-new,
 /spec-archive or /engineer actually runs. Show me the full file list you're
@@ -665,7 +703,10 @@ themselves here is expected, not a failure:
       multi-subspec wave if the work genuinely parallelizes.
 - [ ] After that `/engineer` run, `docs/verification-log/` holds a
       `*.run-stats.md` file and `budget-calibration.json`, and `.engineer/`
-      is gone.
+      is gone. If the harness reported tokens, the stats file has a **Tokens by
+      role** table.
+- [ ] `npm run typecheck` fails on a deliberate type error (it must not pass
+      on a solution-style tsconfig).
 
 ---
 
@@ -679,5 +720,8 @@ themselves here is expected, not a failure:
 | Plugin loads but dependencies are missing                   | Allowlist entry missing (see Dependencies)                            | Fix `marketplace.json`, then `/reload-plugins`                                                                                                                                               |
 | Pushed a change, nothing updates                            | Auto-update off, or a `version` field is set                          | Enable `autoUpdate`; remove `version`; or run `claude plugin marketplace update siddaharthsuman-spec-driven-dev` then `claude plugin update spec-driven-dev@siddaharthsuman-spec-driven-dev` |
 | Commit in a worker's worktree skipped the sanitize check    | Husky 9's default hooks folder isn't created in new worktrees         | Expected. The worker's own check and the orchestrator's diff check cover it. To make the hook fire there, point `core.hooksPath` at a tracked or absolute folder                             |
+| `/pr-review` shows a check as `unknown`                     | The tool isn't installed in the checkout, the command timed out, or its output couldn't be read | Install the project's dependencies, or pass the project's own commands (`--typecheck-cmd`, `--lint-cmd`, `--test-cmd`); `unknown` never counts as a pass                              |
+| `/pr-review` screenshots skip a route like `/posts/:id`     | Parameterised routes need a real value to load                        | They are listed under `skipped`; add a scenario with a concrete URL                                                                                                                          |
+| Output from a command looks cut short (with RTK installed)  | RTK filters Bash output and the filter dropped a line                 | Rerun with `rtk proxy <cmd>`, and add that command to `exclude_commands`                                                                                                                     |
 | An Edit fails right after a Write or Edit on the same file  | The `PostToolUse` sanitize hook rewrote the file                      | Re-read the file before the next Edit on it                                                                                                                                                  |
 | `/engineer` stopped and asked about a model                 | A role was planned on a model stronger than the orchestrator's        | Answer the consent question, or pick a model at or below the orchestrator's; `tier-check` exits with code 3 in this case                                                                     |
