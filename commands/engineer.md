@@ -29,6 +29,12 @@ checks). Both print usage with `--help`.
 
 ## Standing rules
 
+- **Invocation is binding:** the human typed `/engineer`, so this command runs
+  the whole orchestrated pipeline (steps 0 to 9) to the end. Never substitute
+  `/spec-new` plus `/spec-implement`, a linear run, or any shortcut on your own
+  judgment, however small the work looks. The only way out is the human saying
+  so in chat after seeing the step 0 verdict. If you are about to deviate
+  from any step, stop and ask first; a silent deviation is a failed run.
 - **Status narration:** apply i-have-adhd's output rules (action-first,
   numbered steps, no preamble or recap, lists capped at 5) to the go/no-go
   verdict, plan summary, per-wave reports and budget tracking. Never to the
@@ -51,16 +57,29 @@ checks). Both print usage with `--help`.
 
 ## 0. Go / no-go
 
+First action, before anything else: `engineer-stats.mjs start --run <slug>
+spec=<path or idea> orchestrator=<model:effort>`. Statistics are recorded for
+every `/engineer` run, including one whose verdict is "not worth it".
+
 Produce this verdict before any decomposition: the number of waves, the widest
-parallel width, the expected number of gate runs. If fewer than two waves have
-a width of 2 or more, recommend a linear `/spec-implement` and stop for the
-human's call. Two cases where the manual pipeline is the right tool:
+parallel width, the expected number of gate runs. It is advice, not a gate. If
+fewer than two waves have a width of 2 or more, say in one line that a linear
+`/spec-implement` would cost less, then continue orchestrating anyway (one
+wave, one worker per subspec, every verifier and stats step intact). Stop only
+if the human answers that they want the linear path.
+
+Record the verdict and the decision:
+`engineer-stats.mjs event go-no-go --run <slug> verdict=<go|no-go>
+decision=<orchestrate|linear> waves=<n> width=<n>`.
+
+Two cases where the manual pipeline would normally be the right tool, to be
+noted in the verdict:
 
 - A large but strictly sequential spec. Waves exist for independent work.
-- A subspec small enough to do inline never gets its own worker.
+- A subspec small enough to do inline. Under `/engineer` it still gets a
+  worker, since the point of the run is the measured pipeline.
 
-The human may still choose to orchestrate; log that, and treat the overhead as
-the point of the run. If unclear, ask.
+If the human's intent is unclear, ask.
 
 ## 1. Decompose into waves and check dependencies
 
@@ -95,7 +114,7 @@ planning time. Keep this mechanical
 
 ## 2. Pre-flight, then show the plan
 
-1. `engineer-stats.mjs start --run <slug> spec=<path> orchestrator=<model:effort>`
+1. The run was already started in step 0; do not start it again.
 2. Time the gates once, using the commands listed in `AGENTS.md`: typecheck
    plus tests (per-wave gate), and the full check plus build (full gate). Record `gate-start` / `gate-end` events named
    `baseline` and `full-baseline`.

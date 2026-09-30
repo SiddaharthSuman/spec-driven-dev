@@ -147,6 +147,18 @@ test('re-dispatch: a second worker-start counts as an attempt and adds to actual
   assert.equal(w.status, 'done');
 });
 
+test('go-no-go event is recorded even when the run goes linear-advised but orchestrates anyway', () => {
+  const dir = tmp();
+  const log = path.join(dir, 'log');
+  const f = path.join(dir, 'state', 'r4', 'events.jsonl');
+  const call = (...a) => run(dir, log, [...a, '--run', 'r4']);
+  call('start', 'spec=s', 'orchestrator=sonnet:high', 'ts=0');
+  call('event', 'go-no-go', 'verdict=no-go', 'decision=orchestrate', 'waves=1', 'width=1', 'ts=1');
+  const s = computeStats(readEvents(f));
+  assert.equal(s.verdict_go_no_go, 'no-go');
+  assert.equal(s.go_no_go_decision, 'orchestrate');
+});
+
 test('under-half budget is flagged for review', () => {
   const dir = tmp();
   const log = path.join(dir, 'log');

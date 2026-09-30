@@ -28,15 +28,21 @@ that covers the same feature area as $ARGUMENTS.
 ## 2. Brainstorm before drafting
 
 Use Superpowers' brainstorming skill to work the rough idea into a concrete,
-scoped requirement. Follow its Socratic style: walk through reasoning in
-pieces the person can approve as you go, rather than presenting a finished
-spec out of nowhere.
+scoped requirement. Follow its Socratic style for the questions themselves:
+one decision at a time, each with the options and a recommendation.
 
-Once scope has genuinely converged, draft the spec itself:
+Stop brainstorming as soon as scope has converged. Do not recap the design in
+chat and ask "does this look right so far?". Write the spec file next, and let
+the person review the real document. The spec is the review artifact; a prose
+summary of it is a second, weaker copy that adds a round trip.
+
+Then draft the spec itself:
 
 - Match `docs/specs/_template.md` section for section: Goal, Design Decisions,
   Implementation Details (API/UI/Data model), Dependencies, Acceptance
-  Criteria written in EARS form, and a Verification Checklist.
+  Criteria written in EARS form, and a Verification Checklist. Also include
+  the three sections below whenever they apply, even if the project's template
+  predates them.
 - If Dependencies names a new or updated library, resolve it through Context7
   (`resolve-library-id` then `query-docs`) before the spec states anything
   about that library's behavior.
@@ -44,6 +50,36 @@ Once scope has genuinely converged, draft the spec itself:
   conclusions rather than pasting the discussion. Whoever reads this later
   (`/spec-implement`, `spec-verifier`) should see a requirements document, not
   a transcript.
+
+**Deferred and out of scope.** Name everything the spec deliberately leaves
+out and where it goes instead: "Deferred to: <later spec or idea>". If the
+spec defers something a reader would expect (a sidebar on a dashboard spec),
+also add it as a one-line entry in the progress tracker, so the gap reads as
+planned scope and not as a defect.
+
+**Affected existing files.** List every file, test, snapshot, generated
+artifact and page that the change touches or breaks without being the subject
+of the spec. A new cross-cutting element (layout shell, route wrapper, global
+provider, token, shared component) changes code you are not writing. Find
+these by search, not memory: grep for the consumers, list the pages that
+render inside the new wrapper, list the tests and screenshot baselines that
+will change, and check for duplicated elements such as a second `<h1>` or a
+second landmark. "Unchanged" is a claim to verify, not to assume.
+
+**UI detail (UI specs only).** Every text element gets a size, weight and
+color token; every interactive element gets its states (default, hover,
+active, focus, disabled); responsive behavior is stated per breakpoint. Where
+the design tokens document a role, quote it. Where they do not, mark the
+choice "(proposed)". If the spec points at reference images, walk each image
+region by region (top bar, side panel, content, footer) and confirm every
+region is either specified or listed under Deferred. A region that appears in
+no section is a miss.
+
+**Self-review before showing it.** Read the whole spec once end to end, then:
+for every fact you changed while drafting (a token name, a count, a path),
+grep the spec for other places that state the same fact and make them agree.
+Check that each Acceptance Criterion has a named test and that each item in
+Affected existing files has a line under Implementation Details.
 
 ## 3. Number and save
 

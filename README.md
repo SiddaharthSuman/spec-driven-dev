@@ -627,8 +627,10 @@ case."
    empty. No pre-adoption backfill — there's no prior history.
 
 9. docs/specs/_template.md — EARS-format spec template: Goal, Design
-   Decisions, Implementation Details, Dependencies, Acceptance Criteria
-   (EARS notation), Verification Checklist.
+   Decisions, Implementation Details, Deferred and out of scope (each item
+   with where it goes instead), Affected existing files (files, tests,
+   snapshots and pages the change touches without owning), Dependencies,
+   Acceptance Criteria (EARS notation), Verification Checklist.
 
 10. docs/specs/_amendment-template.md — same shape, scoped to
     Added/Modified/Removed relative to the spec it amends, with an Amends:

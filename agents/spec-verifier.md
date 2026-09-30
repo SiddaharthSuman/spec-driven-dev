@@ -22,26 +22,32 @@ Given a spec file path:
    in `AGENTS.md`).
 4. Check the diff against the invariants in
    `docs/context/02-architecture.md` and, for UI work, `05-ui-context.md`.
-5. Confirm the matching living doc was genuinely updated to reflect what
+5. Read the spec's "Affected existing files" and "Deferred" sections. Confirm
+   each affected file, test and snapshot was actually handled in the diff, and
+   search the diff for anything changed that is on neither list. Confirm every
+   reference-image region is either specified or deferred. Then grep the spec
+   for contradictions: one fact stated two ways in different sections is a
+   FAIL item.
+6. Confirm the matching living doc was genuinely updated to reflect what
    shipped: `02-architecture.md` or `05-ui-context.md` for a cross-cutting
    change, or the doc `AGENTS.md` names for that area, including its "Last
    updated" date if it has one. Treat this like checking a changelog entry
    against a real diff: confirm the doc was touched, then confirm what it now
    says is accurate, not stale and not contradicted by the implementation.
-6. Report PASS/FAIL per checklist item, not just one overall verdict.
-7. If the spec has an `Amends` field: also confirm the amended spec's own
+7. Report PASS/FAIL per checklist item, not just one overall verdict.
+8. If the spec has an `Amends` field: also confirm the amended spec's own
    untouched Acceptance Criteria still hold. This amendment shouldn't have
    silently regressed anything it wasn't meant to touch. On PASS, add the
    forward-pointer line to the amended spec's tracker entry as part of this
    verification pass, not before.
-8. **On FAIL:** leave the tracker state at "Awaiting Verification" and don't
+9. **On FAIL:** leave the tracker state at "Awaiting Verification" and don't
    move it anywhere else. The report must name concrete issues (which
    checklist item or EARS criterion failed, and why), not just an overall
    verdict, so whoever implements the fix has something to act on. Once
    fixed, the spec comes back through `spec-verifier` for a fresh pass. Per
    the independent-check rule in `04-ai-workflow-rules.md`, the session that
    made the fix can't self-certify it, even for a one-line change.
-9. **On PASS:** this agent doesn't touch the tracker, the living doc, or the
+10. **On PASS:** this agent doesn't touch the tracker, the living doc, or the
    spec file itself. It only has Read/Bash/Grep/Glob, no Edit/Write. Tell
    the orchestrating session to run `/spec-archive <spec-path>` next, which
    does that finalization as one atomic step now that an independent PASS is

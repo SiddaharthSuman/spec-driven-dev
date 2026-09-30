@@ -26,6 +26,7 @@
 //   worker-start / worker-end    id [status=done|blocked|budget-report|failed] [tokens] [duration_ms]
 //   verify-start / verify-end    id [verdict=PASS|FAIL] [tokens] [duration_ms]
 //   gate-start / gate-end        name (baseline, full-baseline, wave-1, final, ...)
+//   go-no-go                     verdict=<go|no-go> decision=<orchestrate|linear> [waves] [width]
 //   blocked                      id missing=<what was missing>
 //   consent                      role from to decision=granted|denied
 //   unplanned                    file
@@ -210,6 +211,7 @@ function roleOfTokenEvent(e) {
 
 export function computeStats(events) {
   const start = events.find((e) => e.type === 'start') || {};
+  const goNoGo = events.find((e) => e.type === 'go-no-go') || {};
   const finish = [...events].reverse().find((e) => e.type === 'finish') || {};
   const budgets = [...events].reverse().find((e) => e.type === 'budget-plan') || {};
   const plans = events.filter((e) => e.type === 'subspec-plan');
@@ -283,7 +285,8 @@ export function computeStats(events) {
     run: start.run ?? null,
     spec: start.spec ?? null,
     orchestrator: start.orchestrator ?? null,
-    verdict_go_no_go: start.verdict ?? null,
+    verdict_go_no_go: goNoGo.verdict ?? start.verdict ?? null,
+    go_no_go_decision: goNoGo.decision ?? null,
     started: start.ts != null ? new Date(start.ts).toISOString() : null,
     finished: finish.ts != null ? new Date(finish.ts).toISOString() : null,
     final_verdict: finish.verdict ?? null,
