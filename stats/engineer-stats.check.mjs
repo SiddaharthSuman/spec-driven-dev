@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { main, tierOf, effortOf, suggestBudget, tierCheck, calibrate, computeStats, readEvents } from './engineer-stats.mjs';
+import { main, tierOf, effortOf, suggestBudget, tierCheck, calibrate, computeStats, readEvents, flagHighTokens, renderMarkdown } from './engineer-stats.mjs';
 
 const M = 60000;
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'stats-'));
@@ -177,4 +177,51 @@ test('budgets: missing subspec plans or an unknown model raise a clear error', (
   assert.throws(() => run(dir, log, ['budgets', '--run', 'e', 'orchestrator=sonnet:high', 'baseline_gate_min=1', 'full_gate_min=2']), /no subspec-plan/);
   run(dir, log, ['event', 'subspec-plan', '--run', 'e', 'id=A', 'wave=1', 'size=S', 'model=llama', 'effort=low']);
   assert.throws(() => run(dir, log, ['budgets', '--run', 'e', 'orchestrator=sonnet:high', 'baseline_gate_min=1', 'full_gate_min=2']), /unknown model/);
+});
+
+test('computeStats: tokens are split by role, and run totals still add up', () => {
+  const s = computeStats([
+    { type: 'subspec-plan', id: 'W1', wave: 1, size: 'S', model: 'haiku', effort: 'low' },
+    { type: 'tokens', scope: 'orchestrator', in: 1000, out: 500 },
+    { type: 'worker-end', id: 'W1', status: 'done', tokens: 4000 },
+    { type: 'verify-end', id: 'W1', verdict: 'PASS', tokens: 1500 },
+    { type: 'tokens', scope: 'other-thing', in: 10, out: 0 },
+  ]);
+  assert.deepEqual(s.run_total.tokens_by_role, { orchestrator: 1500, workers: 4000, verifiers: 1500, other: 10 });
+  assert.equal(s.run_total.tokens, 7010);
+  assert.equal(s.workers[0].tokens, 5500);
+});
+
+test('computeStats: no token data means no role breakdown', () => {
+  assert.equal(computeStats([]).run_total.tokens_by_role, null);
+});
+
+test('calibrate records median tokens per group and flagHighTokens needs 3 samples', () => {
+  const log = tmp();
+  const w = (tokens) => ({ status: 'done', actual_min: 5, size: 'S', model: 'haiku', effort: 'low', ratio: 1, tokens });
+  const write = (name, tokens) =>
+    fs.writeFileSync(path.join(log, `${name}.run-stats.json`), JSON.stringify({ workers: [w(tokens)] }));
+  write('a', 1000);
+  write('b', 2000);
+  let c = calibrate(log);
+  assert.equal(c.groups['S|fast|low'].nTokens, 2);
+  const probe = () => ({ workers: [{ id: 'W9', size: 'S', model: 'haiku', effort: 'low', tokens: 9000 }], accuracy: {} });
+  assert.deepEqual(flagHighTokens(probe(), c).accuracy.high_token_workers, []);
+  write('c', 3000);
+  c = calibrate(log);
+  assert.equal(c.groups['S|fast|low'].medianTokens, 2000);
+  assert.deepEqual(flagHighTokens(probe(), c).accuracy.high_token_workers, ['W9']);
+  const ok = { workers: [{ id: 'W8', size: 'S', model: 'haiku', effort: 'low', tokens: 3900 }], accuracy: {} };
+  assert.deepEqual(flagHighTokens(ok, c).accuracy.high_token_workers, []);
+});
+
+test('renderMarkdown shows a token share table when tokens were recorded', () => {
+  const s = computeStats([
+    { type: 'worker-end', id: 'W1', tokens: 3000 },
+    { type: 'verify-end', id: 'W1', tokens: 1000 },
+  ]);
+  const md = renderMarkdown(flagHighTokens(s, null));
+  assert.match(md, /## Tokens by role/);
+  assert.match(md, /\| workers \| 3000 \| 75 \|/);
+  assert.match(md, /Tokens over twice the median of past runs \| none/);
 });

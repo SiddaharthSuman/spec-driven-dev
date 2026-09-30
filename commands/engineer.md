@@ -245,7 +245,9 @@ verifiers Sonnet medium, final verifier Sonnet medium.
 
 1. Run `/spec-archive` on the parent spec.
 2. Print the final tree, all `✓`, with any `! unplanned` still visible.
-3. `engineer-stats.mjs finish --run <slug> verdict=<PASS|FAIL|ESCALATED>`. It
+3. Record your own token use with `engineer-stats.mjs event tokens --run <slug>
+   scope=orchestrator in=<n> out=<n>` if the harness reports it, then
+   `engineer-stats.mjs finish --run <slug> verdict=<PASS|FAIL|ESCALATED>`. It
    writes `docs/verification-log/<date>-<slug>.run-stats.md` and `.json` and
    refreshes `budget-calibration.json`.
 4. Link the `.md` from the spec's verification-log entry and commit the new

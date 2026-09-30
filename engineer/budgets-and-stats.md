@@ -101,6 +101,14 @@ tokens, pass `duration_ms=` or `tokens=` and those are used instead.
 | `unplanned`                       | a file outside the tree was changed (`file=`)                             |
 | `consent`                         | the human answers a model proposal (`role from to decision`)              |
 
+Token figures come from the harness. Pass `tokens=` on `worker-end` and
+`verify-end`, and record the orchestrator's own usage with
+`event tokens --run <slug> scope=orchestrator in=<n> out=<n>`. `finish` splits
+the total into orchestrator, workers and verifiers (the **Tokens by role**
+table), and flags any worker whose tokens exceed twice the median of earlier
+runs with the same size, model tier and effort. The flag needs 3 earlier
+samples. It is a prompt to look at why, not a failure.
+
 A re-dispatched worker just gets another `worker-start`. The record counts
 attempts and sums time.
 

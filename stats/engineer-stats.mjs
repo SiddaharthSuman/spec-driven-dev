@@ -29,7 +29,8 @@
 //   blocked                      id missing=<what was missing>
 //   consent                      role from to decision=granted|denied
 //   unplanned                    file
-//   tokens                       scope id in out
+//   tokens                       scope=orchestrator|worker|verifier id in out
+//                                (worker-end and verify-end tokens count as worker and verifier)
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -198,6 +199,15 @@ export function computeBudgets(events, { orchestrator, baselineGateMin, fullGate
 
 // -------------------------------------------------------------------- stats
 
+// Which role a token-bearing event belongs to, so a run shows where the
+// tokens went (orchestrator, workers, verifiers), not just a grand total.
+function roleOfTokenEvent(e) {
+  if (e.type === 'worker-end' || e.scope === 'worker') return 'workers';
+  if (e.type === 'verify-end' || e.scope === 'verifier') return 'verifiers';
+  if (e.scope === 'orchestrator') return 'orchestrator';
+  return 'other';
+}
+
 export function computeStats(events) {
   const start = events.find((e) => e.type === 'start') || {};
   const finish = [...events].reverse().find((e) => e.type === 'finish') || {};
@@ -210,12 +220,14 @@ export function computeStats(events) {
   const planningT = pairDurations(events, 'planning-start', 'planning-end', null).get('_');
 
   const tokensBy = {};
+  const tokensByRole = { orchestrator: 0, workers: 0, verifiers: 0, other: 0 };
   let tokensTotal = 0;
   for (const e of events) {
     const n = (typeof e.tokens === 'number' ? e.tokens : 0) + (typeof e.in === 'number' ? e.in : 0) + (typeof e.out === 'number' ? e.out : 0);
     if (!n) continue;
     tokensTotal += n;
     if (e.id) tokensBy[e.id] = (tokensBy[e.id] || 0) + n;
+    tokensByRole[roleOfTokenEvent(e)] += n;
   }
 
   const blocked = events.filter((e) => e.type === 'blocked').map((e) => ({ id: e.id, missing: e.missing }));
@@ -280,6 +292,7 @@ export function computeStats(events) {
       budget_min: budgets.run_min ?? null, actual_min: runActual,
       error_pct: budgets.run_min && runActual != null ? errPct(runActual, budgets.run_min) : null,
       tokens: tokensTotal || null,
+      tokens_by_role: tokensTotal ? tokensByRole : null,
     },
     waves, workers,
     gates: Object.fromEntries([...gateT].map(([k, v]) => [k, v])),
@@ -319,12 +332,18 @@ export function renderMarkdown(s) {
   out.push('## Workers', '', table(
     ['Id', 'Wave', 'Size', 'Model', 'Effort', 'Files', 'Criteria', 'Budget', 'Actual', 'Ratio', 'Attempts', 'Status', 'Blocked', 'Verify (min)', 'Verdict', 'Tokens'],
     s.workers.map((w) => [w.id, w.wave, w.size, w.model, w.effort, w.files, w.criteria, w.budget_min, w.actual_min, w.ratio, w.attempts, w.status, w.blocked, w.verify_min, w.verdict, w.tokens])), '');
+  if (s.run_total.tokens_by_role) {
+    const total = s.run_total.tokens;
+    out.push('## Tokens by role', '', table(['Role', 'Tokens', 'Share (%)'],
+      Object.entries(s.run_total.tokens_by_role).filter(([, n]) => n > 0).map(([role, n]) => [role, n, Math.round((n / total) * 100)])), '');
+  }
   out.push('## Gates (min)', '', table(['Gate', 'Runs'], Object.entries(s.gates).map(([k, v]) => [k, v.join(', ')])), '');
   out.push('## Prediction accuracy', '', table(['Measure', 'Value'], [
     ['Workers measured', s.accuracy.workers_measured],
     ['Mean absolute error (%)', s.accuracy.mean_abs_error_pct],
     ['Over budget', s.accuracy.over_budget.join(', ') || 'none'],
     ['Under half of budget (review how it was set)', s.accuracy.under_half_budget.join(', ') || 'none'],
+    ['Tokens over twice the median of past runs', (s.accuracy.high_token_workers ?? []).join(', ') || 'none'],
   ]), '');
   if (s.blocked.length) out.push('## BLOCKED reports', '', table(['Worker', 'Missing'], s.blocked.map((b) => [b.id, b.missing])), '');
   if (s.consent.length) out.push('## Model consent', '', table(['Role', 'From', 'To', 'Decision'], s.consent.map((c) => [c.role, c.from, c.to, c.decision])), '');
@@ -333,6 +352,13 @@ export function renderMarkdown(s) {
 }
 
 // -------------------------------------------------------------- calibration
+
+// Tokens per worker are only comparable across runs when they were recorded,
+// so the median covers just the workers that have a token figure.
+function tokenMedian(ws) {
+  const t = ws.filter((w) => typeof w.tokens === 'number' && w.tokens > 0).map((w) => w.tokens);
+  return t.length ? { nTokens: t.length, medianTokens: Math.round(median(t)) } : {};
+}
 
 export function calibrate(logDir) {
   const groups = {};
@@ -353,9 +379,26 @@ export function calibrate(logDir) {
       n: ws.length,
       medianMin: round1(median(ws.map((w) => w.actual_min))),
       medianRatio: round1(median(ws.filter((w) => w.ratio != null).map((w) => w.ratio))),
+      ...tokenMedian(ws),
     };
   }
   return result;
+}
+
+export const TOKEN_FLAG_MULTIPLE = 2;
+
+// Flags workers whose tokens exceed TOKEN_FLAG_MULTIPLE times the median of
+// earlier runs with the same size, tier and effort. Needs the calibration
+// minimum number of samples, so a thin history never raises a flag.
+export function flagHighTokens(stats, calibration) {
+  const flagged = [];
+  for (const w of stats.workers) {
+    const g = calibration?.groups?.[`${w.size}|${tierOf(w.model)}|${w.effort}`];
+    if (!g || typeof w.tokens !== 'number' || (g.nTokens ?? 0) < CALIBRATION_MIN_SAMPLES) continue;
+    if (w.tokens > g.medianTokens * TOKEN_FLAG_MULTIPLE) flagged.push(w.id);
+  }
+  stats.accuracy.high_token_workers = flagged;
+  return stats;
 }
 
 function loadCalibration(logDir) {
@@ -432,7 +475,7 @@ export function main(argv, { now = () => Date.now() } = {}) {
     }
     case 'finish': {
       appendEvent(eventsFile(), { type: 'finish', ts: ts(), verdict: kv.verdict });
-      const stats = computeStats(readEvents(eventsFile()));
+      const stats = flagHighTokens(computeStats(readEvents(eventsFile())), loadCalibration(logDir));
       fs.mkdirSync(logDir, { recursive: true });
       const base = path.join(logDir, `${localDate(ts())}-${opts.run}.run-stats`);
       fs.writeFileSync(`${base}.json`, `${JSON.stringify(stats, null, 2)}\n`);

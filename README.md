@@ -207,6 +207,78 @@ stats/engineer-stats.check.mjs system-one/decide.check.mjs`. The `pr-review/`
 
 ---
 
+## Keeping token cost down
+
+Measure before cutting. Every saving figure in tip lists is unmeasured on your
+own work, so keep a change only if the numbers move.
+
+**Baseline.** After a normal `/engineer` feature, run `/usage` (spend by
+skill, subagent and MCP server, flagging anything above 10% of recent usage)
+and read the run's `.run-stats.md`. It now has a **Tokens by role** table
+(orchestrator, workers, verifiers) and a line listing workers whose tokens
+were over twice the median of earlier runs with the same size, model tier and
+effort. That line needs 3 earlier samples, so a thin history never raises it.
+`/insights` reviews your last 200 sessions for habits worth changing. Repeat
+after each change below and compare like with like.
+
+**Habits that keep the prompt cache warm.** Changing the model, effort, MCP
+servers or plugins, toggling fast mode, or compacting invalidates the cache, so
+the next turn pays full price for the whole prefix.
+
+- Pick the session model before the first message. `/engineer` fixes its roles
+  up front, so it never switches mid-run.
+- Leave fast mode off by default.
+- Do not toggle plugins or MCP servers mid-session.
+- Disable MCP servers a project never uses. Idle servers still send their tool
+  definitions every turn. `/context` shows their share.
+- Keep `AGENTS.md` to one-line pointers and the progress tracker to open work
+  plus one line per completed spec (`/spec-archive` does the condensing).
+- Once a month, prune stale skills, plugins and instructions by hand.
+
+**Optional, per developer: RTK.** RTK (Rust Token Killer) installs a
+PreToolUse Bash hook that rewrites commands like `git status` to
+`rtk git status` and filters the output before the model reads it. It is a
+personal choice, not installed by this plugin, and it has limits:
+
+- It only touches the Bash tool. Read, Grep and Glob are not affected, and
+  neither are the Node scripts in this plugin (`pr-review`, the sanitizer,
+  the stats tool), which call their tools directly.
+- Its filtering is lossy. Keep it away from anything a verifier or worker uses
+  as pass or fail evidence, or from anything a script parses.
+- It keeps exit codes, and a hook never blocks a command. `rtk proxy <cmd>`
+  prints raw output, and `RTK_DISABLED=1` turns it off for one run.
+- Telemetry is opt-in. Leave it off.
+
+Set it up with `rtk init -g`, then add exclusions to `~/.config/rtk/config.toml`.
+Plain entries match the start of a command (an entry `tsc` does not match
+`npx tsc`, so list both spellings):
+
+```toml
+[hooks]
+exclude_commands = [
+  "tsc", "npx tsc",
+  "vitest", "npx vitest",
+  "biome", "npx biome",
+  "eslint", "npx eslint",
+  "npm test", "npm run test",
+  "npm run typecheck", "npm run lint", "npm run check",
+  "node scripts/sanitize.mjs",
+]
+```
+
+Keep RTK only if `/usage` shows a real drop in the Bash-output share after two
+or three features. If a verifier or worker reports output that looks
+truncated, rerun that command with `rtk proxy`.
+
+**Not recommended**, with reasons: third-party "short reply" skills and
+plugins (they add input tokens to every session and fight the full evidence a
+verifier must give), Headroom-style compression proxies (unverified here, and
+they can drop the exact line a verifier needs), semantic-search indexes and
+"second brain" indexes (they duplicate `docs/context/`), and agent teams (about
+7 times the tokens, where `/engineer` waves are already the cheaper design).
+
+---
+
 ## Do / don't
 
 - **Do** trust the project folder before anything else — that's what
@@ -269,6 +341,8 @@ stats/engineer-stats.check.mjs system-one/decide.check.mjs`. The `pr-review/`
       `CONTEXT7_API_KEY` in your shell profile, restart Claude Code. Skippable;
       falls back to the anonymous rate limit, and a `SessionStart` hook
       reminds you if it's unset.
+- [ ] _(Optional)_ RTK for shorter Bash output, with the exclusions listed under
+      "Keeping token cost down". Only keep it if `/usage` shows a real drop.
 - [ ] _(Only if you'll run `/pr-review`)_ `npx playwright install chromium`
       once — needed for screenshot capture, not installed automatically.
 - [ ] _(Per project, once)_ The bootstrap prompt below copies
