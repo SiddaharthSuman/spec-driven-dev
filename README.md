@@ -50,6 +50,11 @@ routes are found from the import graph, understand TanStack Router and Next
 style route files, and stop at route files so one page change doesn't read as
 a global change. See `pr-review/README.md`.
 
+For screens built from a design, `ui-spec/` can hold the layout to a measured
+table (see "Optional: UI layout tables"). The table is measured on the
+developer's own machine by a local tool that is not part of this package, so
+no design file ever reaches an agent.
+
 ---
 
 ## What `/spec-archive` hands you at the end
@@ -106,6 +111,36 @@ one tangled one.
 
 ---
 
+## Optional: UI layout tables
+
+For a UI project whose designs are sensitive (client work, no Figma access, no
+screenshots shared), a screen can carry a measured layout table in the
+project repo: `docs/design/specs/<screen>.spec.md` plus a `.spec.json`. A row
+is one element: `id, parent, role, text, x, y, w, h, padding, layout, gap,
+tol px`, in CSS pixels. The table is produced locally from the design, by a
+tool this package does not contain, and only the typed table is committed or
+shown to an agent.
+
+What this package provides:
+
+- `ui-spec/gen-ui-spec-tests.mjs` turns a `.spec.json` into a Playwright test
+  file (geometry within `tol px`, the copy, padding and gap, no horizontal
+  overflow). Elements are found through a `data-ui-id` attribute. Projects
+  vendor it as `scripts/gen-ui-spec-tests.mjs`; `--check` fails when a table
+  changed and the tests were not regenerated.
+- `ui-spec/templates/` holds the text the bootstrap prompt below copies into
+  a project: the AGENTS.md section, workflow rules, the `05-ui-context.md`
+  section, a per-screen template (with EARS criteria) and the local-only
+  boundary page.
+- `/spec-new` cites the table instead of restating geometry, and
+  `spec-verifier` runs the `--check` and the generated tests.
+
+The numbers in a table are binding within their tolerance. The `layout` words
+and inferred groups (`gN`) are hints. Colors, type and radius still come from
+the design tokens: a table has none.
+
+---
+
 ## Commit and code text rules
 
 These apply to every agent, subagent and merge commit this package drives.
@@ -143,6 +178,7 @@ pre-commit hook, and the full gate. The details live in
 | `stats/` — `engineer-stats.mjs` (run statistics and budgets) and its tests                                                                            | `.sanitizeignore` (optional exceptions)                                                    |
 | `pr-review/` — `cli.mjs` + ~15 modules, fixtures, golden files, tests                                                                                 |                                                                                            |
 | `system-one/` — `decide.mjs` and its tests, the optional Laya/Jev decision helper, never required                                                     | `CONTRIBUTE.md` — the developer guide for that project (how to build a feature there)      |
+| `ui-spec/` — `gen-ui-spec-tests.mjs`, its tests, and the `templates/` the bootstrap prompt copies from (optional, UI projects) | `scripts/gen-ui-spec-tests.mjs` (vendored), `docs/design/specs/`, `tests/ui-spec/` (generated), `docs/context/ui-spec-local-boundary.md` |
 
 ---
 
@@ -211,9 +247,10 @@ setup checklist, because nothing here requires it.
   one-time setup in `pr-review/README.md` (`npm install` and `npx playwright
   install chromium`, run inside `pr-review/`) as manual. Scripts never run
   from a plugin, and the browser download is a separate step either way.
-- `sanitize/`, `stats/` and `system-one/` are plain Node with no dependencies.
-  Run their tests with `node --test sanitize/sanitize.check.mjs
-stats/engineer-stats.check.mjs system-one/decide.check.mjs`. The `pr-review/`
+- `sanitize/`, `stats/`, `system-one/` and `ui-spec/` are plain Node with no
+  dependencies. Run their tests with `node --test sanitize/sanitize.check.mjs
+stats/engineer-stats.check.mjs system-one/decide.check.mjs
+ui-spec/ui-spec.check.mjs`. The `pr-review/`
   tests run with `npm test` inside `pr-review/` (set
   `PR_REVIEW_CHROMIUM_PATH` if Chromium is not where Playwright expects).
 - This repo follows its own text rules. Check code files with
@@ -341,6 +378,9 @@ they can drop the exact line a verifier needs), semantic-search indexes and
   fallback is a hard requirement wearing a disguise.
 - **Don't** expect this plugin in a cloud session (claude.ai/code). Cloud
   sessions never show the trust dialog that `extraKnownMarketplaces` needs.
+- **Don't** edit a project's vendored `scripts/gen-ui-spec-tests.mjs` or a
+  generated `tests/ui-spec/*.spec.ts` by hand. Change `ui-spec/` here and
+  re-copy, or amend the table.
 - **Don't** edit a project's vendored `scripts/sanitize.mjs` by hand. Change
   `sanitize/sanitize.mjs` here, then re-copy it into each project.
 - **Don't** let any agent use a model stronger than the `/engineer`
@@ -370,6 +410,10 @@ they can drop the exact line a verifier needs), semantic-search indexes and
 - [ ] _(Per project, once)_ The bootstrap prompt below copies
       `sanitize/sanitize.mjs` into the project as `scripts/sanitize.mjs`. After
       a plugin update that changes the sanitizer, re-copy it.
+- [ ] _(UI projects with layout tables)_ The same prompt copies
+      `ui-spec/gen-ui-spec-tests.mjs` into the project as
+      `scripts/gen-ui-spec-tests.mjs`. Re-copy it after a plugin update that
+      changes it, then run the project's `ui-spec:check`.
 
 ---
 
@@ -460,6 +504,8 @@ my answers:
 4. Does this project have a UI, or is it backend/library/CLI only?
 5. Are we adopting the dual enforcement layer (Husky pre-commit/pre-push,
    alongside this plugin's own agent-side hooks)?
+6. (UI projects only) Are the designs sensitive, so screens are measured into
+   layout tables on my machine and only the typed table is shared? (yes/no)
 
 Once I've answered, create the following. Follow the tiered pattern
 throughout: each file's core content (invariants, universally-true rules)
@@ -489,6 +535,8 @@ case."
      report), say it is a vendored copy from the plugin and is not edited
      here, and say exceptions go in `.sanitizeignore`.
    - Build/test commands from my stack answers.
+   - If I said yes to layout tables: a "UI layout specs" section, copied from
+     the plugin's ui-spec/templates/agents-ui-layout-specs.md.
 
 3. docs/context/01-project-overview.md — purpose, users, explicit non-goals,
    from my answers. Short — this is always-loaded core.
@@ -612,6 +660,9 @@ case."
      the worker's own sanitizer run, the orchestrator's check on each worker
      diff, the plugin's PostToolUse hook, the Husky pre-commit check, and the
      full gate.
+   - If I said yes to layout tables: append the plugin's
+     ui-spec/templates/ui-spec-rules.md as a "UI layout specs" section after
+     the last rule, continuing the numbering.
    - Model-tiering, skill-matching, mechanical-diff, and PR-triage
      decisions may optionally call this package's system-one/decide.mjs
      helper for a fast, cheap answer. Never required — every one of these
@@ -620,7 +671,11 @@ case."
 
 7. docs/context/05-ui-context.md — only if I said this project has a UI.
    Design tokens and component conventions from my stack answers; otherwise
-   skip this file entirely.
+   skip this file entirely. If I said yes to layout tables, also append the
+   plugin's ui-spec/templates/ui-context-layout-specs.md, and add this to its
+   visual direction section: "Where a screen has a layout table, the table is
+   binding for geometry within its tolerance, and the reference images only
+   settle what the table does not say."
 
 8. docs/context/06-progress-tracker.md — just the section headers: In
    Progress / Awaiting Verification / Completed / Deprecated-Removed, each
@@ -671,6 +726,23 @@ case."
     to exclude the vendored scripts/sanitize.mjs from the formatter and from
     unused-code checks, since reformatting it makes every re-copy noisy.
 
+16. If I said yes to layout tables: find the plugin's install folder under
+    ~/.claude/plugins/ and copy from it, unchanged (if you can't find it, stop
+    and tell me):
+    - ui-spec/gen-ui-spec-tests.mjs to scripts/gen-ui-spec-tests.mjs.
+    - ui-spec/templates/ui-spec-template.md to
+      docs/design/specs/_ui-spec-template.md.
+    - ui-spec/templates/ui-spec-local-boundary.md to
+      docs/context/ui-spec-local-boundary.md.
+    Add "ui-spec:gen" and "ui-spec:check" scripts to package.json (the
+    generator with --dir=docs/design/specs --out-dir=tests/ui-spec, and the
+    same with --check), add ui-spec:check to the full check command, and add
+    the design-private patterns from the boundary page to .gitignore and its
+    deny rules to .claude/settings.json (show me that diff before writing it).
+    Tell me plainly whether the formatter would rewrite tests/ui-spec/, since
+    that would make --check fail, and exclude scripts/gen-ui-spec-tests.mjs
+    from the formatter and from unused-code checks, as in item 15.
+
 Do not pre-create docs/specs/<developer>/, docs/specs/archive/, or
 docs/verification-log/ — those come into existence the first time /spec-new,
 /spec-archive or /engineer actually runs. Show me the full file list you're
@@ -709,6 +781,10 @@ themselves here is expected, not a failure:
       role** table.
 - [ ] `npm run typecheck` fails on a deliberate type error (it must not pass
       on a solution-style tsconfig).
+- [ ] _(Layout tables only)_ Editing a number in a `.spec.json` without
+      regenerating makes `ui-spec:check` fail, and moving an element 10 px
+      makes its generated geometry test fail with a message that names the
+      element, the edge and both values.
 
 ---
 

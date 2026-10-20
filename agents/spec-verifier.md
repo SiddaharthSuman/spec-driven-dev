@@ -22,6 +22,9 @@ Given a spec file path:
    in `AGENTS.md`).
 4. Check the diff against the invariants in
    `docs/context/02-architecture.md` and, for UI work, `05-ui-context.md`.
+   For a screen with a layout table, run the project's `ui-spec:check` and
+   confirm the generated test exists, is current and passes. The numbers are
+   the check: do not judge closeness by eye.
 5. Read the spec's "Affected existing files" and "Deferred" sections. Confirm
    each affected file, test and snapshot was actually handled in the diff, and
    search the diff for anything changed that is on neither list. Confirm every

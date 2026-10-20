@@ -73,7 +73,10 @@ the design tokens document a role, quote it. Where they do not, mark the
 choice "(proposed)". If the spec points at reference images, walk each image
 region by region (top bar, side panel, content, footer) and confirm every
 region is either specified or listed under Deferred. A region that appears in
-no section is a miss.
+no section is a miss. If the project has a layout table for the screen
+(`docs/design/specs/<screen>.spec.md`), cite it by path instead of restating
+its geometry, and add the layout-table criteria from
+`docs/design/specs/_ui-spec-template.md` to the Acceptance Criteria.
 
 **Self-review before showing it.** Read the whole spec once end to end, then:
 for every fact you changed while drafting (a token name, a count, a path),
