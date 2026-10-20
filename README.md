@@ -39,6 +39,13 @@ flowchart TB
 loop — same four stages, one entry point instead of running each by hand. It
 adds worker parallelism, a live file tree, time budgets set from model and
 effort, and a measured statistics record for every run.
+`/spec-implement-serial` is its serial counterpart for the implement stage. It
+takes one or more specs and, for each, cuts it into ordered levels where every
+level is built on the previous level's branch, verifies each level, folds the
+stack back into one spec branch, and archives. It runs unattended: failures
+are repaired automatically or the run parks with a report. It never opens a
+pull request or pushes, and `/engineer` never chooses it. See
+`serial/serial-run.md`.
 `/pr-review` is a separate, parallel pipeline that never touches this loop —
 it writes to `.reviews/` in the project repo on its own, and never posts to
 GitHub. Its `checks` step runs the project's own typecheck, lint and tests
@@ -169,13 +176,14 @@ pre-commit hook, and the full gate. The details live in
 
 | This package (`spec-driven-dev`)                                                                                                                      | Each consuming project's own repo                                                          |
 | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `commands/` — `spec-new.md`, `spec-implement.md`, `spec-archive.md`, `hotfix.md`, `learn.md`, `pr-review.md`, `run-skill-generator.md`, `engineer.md` | `CLAUDE.md`, `AGENTS.md`                                                                   |
+| `commands/` — `spec-new.md`, `spec-implement.md`, `spec-archive.md`, `hotfix.md`, `learn.md`, `pr-review.md`, `run-skill-generator.md`, `engineer.md`, `spec-implement-serial.md` | `CLAUDE.md`, `AGENTS.md`                                                                   |
 | `agents/` — `explorer.md`, `spec-verifier.md`, `pr-reviewer.md`                                                                                       | `docs/context/01`–`06`                                                                     |
 | `skills/` — `subagent-dispatch/`, `mock-first-api/`, `playwright-live-verification/`                                                                  | `docs/specs/` (per-developer folders), `docs/specs/_template.md`, `_amendment-template.md` |
 | `hooks/` — Context7 key check, the `PostToolUse` sanitize hook, any agent-side enforcement `learn.md` proposes                                        | `docs/specs/archive/`, `docs/verification-log/` (including per-run statistics)             |
 | `engineer/` — reference files `/engineer` reads at the step that needs them (worker prompt, budgets and stats, text hygiene)                          | `.husky/` (pre-commit/pre-push — human-edit-side enforcement; can't live in a plugin)      |
 | `sanitize/` — `sanitize.mjs` and its tests                                                                                                            | `scripts/sanitize.mjs` — a vendored copy of the file to its left                           |
 | `stats/` — `engineer-stats.mjs` (run statistics and budgets) and its tests                                                                            | `.sanitizeignore` (optional exceptions)                                                    |
+| `serial/` — reference files `/spec-implement-serial` reads (`serial-run.md`) and the rules text to paste into a project's `04` (`rules-section.md`)    |                                                                                            |
 | `pr-review/` — `cli.mjs` + ~15 modules, fixtures, golden files, tests                                                                                 |                                                                                            |
 | `system-one/` — `decide.mjs` and its tests, the optional Laya/Jev decision helper, never required                                                     | `CONTRIBUTE.md` — the developer guide for that project (how to build a feature there)      |
 | `ui-spec/` — `gen-ui-spec-tests.mjs`, its tests, and the `templates/` the bootstrap prompt copies from (optional, UI projects) | `scripts/gen-ui-spec-tests.mjs` (vendored), `docs/design/specs/`, `tests/ui-spec/` (generated), `docs/context/ui-spec-local-boundary.md` |
@@ -656,6 +664,20 @@ case."
      unplanned files and consent decisions. budget-calibration.json in the
      same folder is refreshed from them and replaces the default budget
      tables once a size, tier and effort has 3 samples.
+   - Serial implementation (/spec-implement-serial), run by name and never
+     chosen by /engineer: a spec is cut into ordered levels, each built on the
+     previous level's branch, then folded back into level 1 as the spec's
+     branch. No pull request is opened and nothing is pushed. It is
+     unattended: where another rule says escalate to a human or stop and ask,
+     the run repairs automatically within a failure loop (re-evaluate the
+     micro-spec, find the gap across the whole stack, fix where the cause
+     lives, verify with a fresh agent, two attempts per level) or parks with
+     every branch preserved and a report written. Each level passes a build
+     gate, the fold passes a mechanical gate, and the whole passes a final
+     gate. A repaired failure is recorded in
+     docs/verification-log/serial-lessons.md; a repeated category writes a
+     proposal, never an installed hook. Specs in one run each start from the
+     default branch unless marked after=<path>.
    - Text hygiene is enforced in layers because hooks don't fire everywhere:
      the worker's own sanitizer run, the orchestrator's check on each worker
      diff, the plugin's PostToolUse hook, the Husky pre-commit check, and the
