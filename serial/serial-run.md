@@ -7,6 +7,7 @@ changes that mode.
 ## Contents
 
 - Vocabulary and why these words
+- Finding dependencies between specs
 - Branches and git recipes
 - Levels: how to cut them
 - The three gates
@@ -44,6 +45,53 @@ Reasoning, so the choice is not re-debated later:
 A serial run opens no pull requests and never pushes. Its result is a
 verified local branch per spec. Opening a PR is the person's choice.
 
+## Finding dependencies between specs
+
+Runs once in pre-flight over the whole queue, and again when each spec is
+planned into levels. Specs are independent unless this analysis, or an
+`after=` the person gave, says otherwise.
+
+1. **Creates and needs.** For each spec list what it creates and what it
+   needs: files, components, hooks, types, routes, i18n keys, mock endpoints,
+   packages. Read Implementation Details, Dependencies, Affected existing
+   files, any `Amends` field, and any reference to another spec by number or
+   name.
+2. **Providers.** Confirm each need against the default branch by grep or the
+   typechecker, never from memory. A provider is `repo` (exists today), a
+   named spec, or `none`.
+3. **Edges.** Spec B depends on spec A only when a need of B has A as its sole
+   provider. Touching the same file never creates an edge: the tracker, the
+   living docs, routes and i18n files are shared by every spec. Files two
+   specs touch with no edge between them are listed as information.
+4. **Amendments.** A spec with an `Amends` field depends on the original, which
+   must already be Completed. Its code must be on the default branch, or its
+   branch must exist (rule 6 below).
+5. **`after=`.** The person may add an edge the analysis cannot see. It never
+   removes one.
+6. **Provider not in the run.**
+   - Its code is already on the default branch: no edge.
+   - It was implemented earlier (Completed or Awaiting verification in the
+     tracker), its branch exists locally and is not merged into the default
+     branch: cut this spec from that branch, as a chained spec whose
+     predecessor is already done.
+   - It is pending, not implemented, or its branch is missing: park with a
+     report naming the spec and what was needed. Never add it to the run
+     silently.
+7. **Order.** Topological. Ties keep the order the person gave. Move a spec
+   only when an edge requires it, and print one line per move. A cycle parks:
+   it is a conflict between the specs, not something to repair.
+8. **Independent review.** A fresh agent reviews the edges with their
+   evidence (each need and its provider) and re-reads the specs for any it
+   would add. The orchestrator that built the graph never approves it.
+9. **Erring.** Chain only on a hard need. Chaining wrongly costs the person a
+   merge order and a possible restack. Not chaining wrongly is caught when the
+   spec's levels are planned: a need with no provider whose provider is
+   another spec in the queue moves this spec after its provider and cuts it
+   from the provider's branch, before any level exists. If it is found later
+   by a BLOCKED report, repair it in the failure loop: if the provider is
+   already done, restack the levels onto its branch with the restack recipe
+   and re-run the build gates; if the provider has not run, park.
+
 ## Branches and git recipes
 
 Names, with `<spec-branch>` = `<developer>/<NNN>-<short-name>` (the spec's file
@@ -53,8 +101,8 @@ name without `.md`):
 - Level N for N of 2 or more: `<spec-branch>-l<N>`.
 
 One git worktree serves the whole queue (see the command). `<base>` is the
-default branch after `git fetch`, or the previous spec's branch when the spec
-carries `after=`.
+default branch after `git fetch`, or the branch of the spec this one depends
+on (detected, or given with `after=`).
 
 ```
 # start a spec (once)
@@ -215,7 +263,9 @@ for a person to apply. Nothing is installed.
 
 Park when the failure loop is exhausted, a requirement was misread, a
 conflict cannot be resolved without guessing intent, the whole-run budget is
-exceeded, or `/spec-archive` meets a file that sorts into neither commit.
+exceeded, `/spec-archive` meets a file that sorts into neither commit, specs
+depend on each other in a cycle, or a spec needs one that is neither in the
+run nor implemented.
 
 Parking leaves everything in place:
 
@@ -245,8 +295,11 @@ every level:
   "queue": "<slug>",
   "worktree": "<absolute path>",
   "default_branch": "main",
+  "order": ["<spec path>", "..."],
   "specs": [
-    { "path": "docs/specs/dev/001-x.md", "after": null,
+    { "path": "docs/specs/dev/001-x.md",
+      "depends_on": [], "dependency_source": "none|detected|declared",
+      "evidence": "<need and provider, one line per edge>",
       "status": "done|running|parked|pending",
       "branch": "dev/001-x", "levels": 3, "level_done": 3,
       "failed_level": null, "run_slug": "<stats run>" }

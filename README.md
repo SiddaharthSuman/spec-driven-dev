@@ -40,8 +40,9 @@ loop — same four stages, one entry point instead of running each by hand. It
 adds worker parallelism, a live file tree, time budgets set from model and
 effort, and a measured statistics record for every run.
 `/spec-implement-serial` is its serial counterpart for the implement stage. It
-takes one or more specs and, for each, cuts it into ordered levels where every
-level is built on the previous level's branch, verifies each level, folds the
+takes one or more specs, works out which depends on which, and for each cuts it
+into ordered levels where every level is built on the previous level's branch,
+verifies each level, folds the
 stack back into one spec branch, and archives. It runs unattended: failures
 are repaired automatically or the run parks with a report. It never opens a
 pull request or pushes, and `/engineer` never chooses it. See
@@ -677,7 +678,12 @@ case."
      gate. A repaired failure is recorded in
      docs/verification-log/serial-lessons.md; a repeated category writes a
      proposal, never an installed hook. Specs in one run each start from the
-     default branch unless marked after=<path>.
+     default branch. The run finds dependencies between them itself: spec B
+     depends on spec A only when something B needs exists nowhere in the repo
+     and only A creates it. Sharing a file is never a dependency. It orders
+     specs by dependency, cuts a dependent spec from its provider's branch,
+     and parks on a cycle or on a needed spec that is neither in the run nor
+     implemented. after=<path> can add a dependency it cannot see.
    - Text hygiene is enforced in layers because hooks don't fire everywhere:
      the worker's own sanitizer run, the orchestrator's check on each worker
      diff, the plugin's PostToolUse hook, the Husky pre-commit check, and the

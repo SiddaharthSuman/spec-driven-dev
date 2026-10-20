@@ -9,10 +9,12 @@ description:
 ---
 
 Take $ARGUMENTS as one or more paths to specs conforming to `_template.md`
-(or `_amendment-template.md`), worked in the order given. A path may be
-followed by `after=<path of an earlier spec in this run>`. That spec depends
-on the earlier one and is cut from its final branch. Every other spec is cut
-from the default branch. With no path, stop and ask what to run.
+(or `_amendment-template.md`). The run finds which spec depends on which
+(step 0) and works them in dependency order, keeping the order given where
+nothing requires otherwise. A spec that depends on another is cut from that
+spec's final branch. Every other spec is cut from the default branch. A path
+may be followed by `after=<path>` to force a dependency the analysis cannot
+see; it only adds, never removes one. With no path, stop and ask what to run.
 
 Reference files ship with this plugin. Read each only at the step that names
 it:
@@ -62,9 +64,14 @@ and `node ${CLAUDE_PLUGIN_ROOT}/sanitize/sanitize.mjs`.
    default branch after `git fetch`. If this session is already in a dedicated
    linked worktree or a clean checkout meant for the run, use it. Run
    `git config rerere.enabled true` there, and install dependencies once.
-4. Overlap check: compare every spec's file lists (Implementation Details and
-   Affected existing files). Report any file two specs touch, and say which
-   of them have no `after=`. This is information, not a stop.
+4. Find dependencies between the specs, as in "Finding dependencies between
+   specs" in `serial-run.md`: what each spec creates and needs, each need
+   confirmed against the default branch, an edge only where a need's sole
+   provider is another spec. Reorder only when an edge requires it, and say so
+   in one line per move. A cycle, or a needed spec that is not in the run and
+   not implemented, parks. A fresh agent reviews the graph; the orchestrator
+   never approves its own. Report files two specs touch without a dependency
+   between them as information, not a stop.
 5. Read `docs/verification-log/serial-lessons.md` if it exists, and the latest
    few `*.run-stats.md`. Plan with the recorded categories in mind.
 
@@ -82,6 +89,9 @@ Work through the queue in order. A parked spec stops the whole queue.
    level, and then there is no fold).
 3. Write the needs/provides table. Confirm every `repo:` entry by grep or the
    typechecker, never from memory. A need with no provider is a gap: close it.
+   If the provider turns out to be another spec in the queue that step 0
+   missed, this is the second safety net: move this spec after its provider
+   and cut it from the provider's branch, before any level exists.
 4. Write a micro-spec per level to `.engineer/<slug>/L<N>-<id>.md`.
 5. Have a fresh agent review all micro-specs in one pass, as in `/engineer`.
    Fix findings and re-check only what changed.
@@ -151,6 +161,6 @@ queue. Rerunning the same command resumes at the failed level.
 Print one line per spec: PASS, parked or skipped, its branch name, and the
 location of its run statistics. Print each saved manual verification script
 path. State that nothing was pushed and no PR was opened, and list the
-branches in merge order with the restack commands from `serial-run.md` for any
-spec that carries `after=`. Delete `.engineer/<slug>/` for finished specs.
+branches in merge order, each chained spec marked with the spec it depends on
+and why, with the restack commands from `serial-run.md` for those specs. Delete `.engineer/<slug>/` for finished specs.
 Keep `.engineer/<queue>/` while any spec is parked.

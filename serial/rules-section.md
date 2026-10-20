@@ -37,11 +37,16 @@ them one at a time, unattended.
     `docs/verification-log/serial-lessons.md`. A repeated category produces a
     written proposal in `serial-proposals.md`, never an installed hook, and
     rule 4 still forbids weakening a test to make a fix pass.
-28. **Independent specs, chained only by choice.** Each spec in a queue starts
-    from the default branch. A spec that truly depends on an earlier one in
-    the same run is marked `after=<path>` and is cut from that branch; the
-    person then merges in order, and restacks with the recipes in the plugin
-    if a merge strategy rewrites history.
+28. **Independent specs, chained only on a hard need.** Each spec in a queue
+    starts from the default branch. The run finds dependencies itself: spec B
+    depends on spec A only when something B needs exists nowhere in the repo
+    and only A creates it. Sharing a file is never a dependency. The run
+    orders specs by dependency, cuts a dependent spec from its provider's
+    branch, parks on a cycle or on a needed spec that is neither in the run
+    nor implemented, and has a fresh agent review the graph. `after=<path>`
+    can add a dependency the run cannot see. The person then merges in order,
+    and restacks with the recipes in the plugin if a merge strategy rewrites
+    history.
 ```
 
 ## Edits to existing rules
