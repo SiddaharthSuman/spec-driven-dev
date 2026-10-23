@@ -6,7 +6,7 @@
     "email": "siddaharthsuman@gmail.com"
   },
   "dependencies": [
-    "superpowers@claude-plugins-official",
+    "superpowers@superpowers-marketplace",
     "context7@claude-plugins-official",
     "ponytail@ponytail",
     "i-have-adhd@i-have-adhd"
